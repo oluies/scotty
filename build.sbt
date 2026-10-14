@@ -1,55 +1,38 @@
-import xerial.sbt.Sonatype._
-import ReleaseTransformations._
+val scala3Version = "3.3.8" // LTS
+val scalaTestVersion = "3.2.20"
+val parallelCollectionsVersion = "1.2.0"
 
-val defaultScalaVersion = "2.13.0"
-
-ThisBuild / name := "scotty"
 ThisBuild / organization := "xyz.entangled"
-ThisBuild / scalaVersion := defaultScalaVersion
-ThisBuild / crossScalaVersions := Seq(
-  defaultScalaVersion,
-  "2.12.8"
-)
+ThisBuild / version := "0.7.0-SNAPSHOT"
+ThisBuild / scalaVersion := scala3Version
+ThisBuild / versionScheme := Some("early-semver")
 
-val scalaTestVersion = "3.0.8"
-
-libraryDependencies ++= {
-  CrossVersion.partialVersion(scalaVersion.value) match {
-    case Some((2, major)) if major >= 13 => Seq("org.scala-lang.modules" %% "scala-parallel-collections" % "0.2.0")
-    case _ => Seq()
-  }
-}
-
-libraryDependencies += "org.scalactic" %% "scalactic" % scalaTestVersion % "test"
-libraryDependencies += "org.scalatest" %% "scalatest" % scalaTestVersion % "test"
-
-publishTo := sonatypePublishTo.value
-
-publishMavenStyle := true
-
-publishConfiguration := publishConfiguration.value.withOverwrite(true)
-publishLocalConfiguration := publishLocalConfiguration.value.withOverwrite(true)
-
-licenses := Seq("APL2" -> url("http://www.apache.org/licenses/LICENSE-2.0.txt"))
-
-sonatypeProjectHosting := Some(GitHubHosting("entangled-xyz", "scotty", "vasinov@me.com"))
-
-developers := List(
-  Developer(id="vasinov", name="Vasily Vasinov", email="vasinov@me.com", url=url("https://www.vasinov.com"))
-)
-
-releaseCrossBuild := true
-releaseProcess := Seq[ReleaseStep](
-  checkSnapshotDependencies,
-  inquireVersions,
-  runClean,
-  runTest,
-  setReleaseVersion,
-  commitReleaseVersion,
-  tagRelease,
-  releaseStepCommandAndRemaining("+publishSigned"),
-  setNextVersion,
-  commitNextVersion,
-  releaseStepCommand("sonatypeReleaseAll"),
-  pushChanges
-)
+lazy val root = (project in file("."))
+  .settings(
+    name := "scotty",
+    description := "Quantum computing in Scala: state-vector simulator plus a density-matrix and quantum-channel layer.",
+    homepage := Some(url("https://github.com/entangled-xyz/scotty")),
+    licenses := Seq("Apache-2.0" -> url("https://www.apache.org/licenses/LICENSE-2.0.txt")),
+    developers := List(
+      Developer(
+        id = "vasinov",
+        name = "Vasily Vasinov",
+        email = "vasinov@me.com",
+        url = url("https://www.vasinov.com")
+      )
+    ),
+    scalacOptions ++= Seq(
+      "-deprecation",
+      "-feature",
+      "-unchecked",
+      "-explain-types",
+      "-source:3.3"
+    ),
+    libraryDependencies ++= Seq(
+      "org.scala-lang.modules" %% "scala-parallel-collections" % parallelCollectionsVersion,
+      "org.scalactic" %% "scalactic" % scalaTestVersion % Test,
+      "org.scalatest" %% "scalatest" % scalaTestVersion % Test
+    ),
+    publishMavenStyle := true,
+    publishTo := Some(Resolver.defaultLocal)
+  )

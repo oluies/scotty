@@ -1,12 +1,12 @@
 package scotty.simulator
 
-import org.scalatest.FlatSpec
+import org.scalatest.flatspec.AnyFlatSpec
 import scotty.TestHelpers
-import scotty.quantum.gate.StandardGate.{X, _}
-import scotty.quantum._
+import scotty.quantum.gate.StandardGate.*
+import scotty.quantum.*
 import scotty.quantum.math.Complex
 
-class StandardGatesSpec extends FlatSpec with TestHelpers {
+class StandardGatesSpec extends AnyFlatSpec with TestHelpers {
   "CNOT" should "change target qubit when control is 1" in {
     assert(sim.runAndMeasure(Circuit(X(0), CNOT(0, 1))).toBinary == "11")
   }

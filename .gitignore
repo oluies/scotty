@@ -1,10 +1,10 @@
-.idea
 /target
-/project
-!/project/plugins.sbt
+/project/target
+/project/project
 /out
 .ipr
 
 .vscode
 .bloop
 .metals
+.bsp

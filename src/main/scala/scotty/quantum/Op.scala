@@ -1,10 +1,11 @@
 package scotty.quantum
 
-trait Op {
+trait Op:
   lazy val qubitCount: Int = indices.length
-  val indices: Seq[Int]
-}
 
-case class Measure(index: Int) extends Op {
-  val indices: Seq[Int] = Seq(index)
-}
+  /** Declared as a `def` so that implementations may use a `lazy val`. */
+  def indices: Seq[Int]
+
+final case class Measure(index: Int) extends Op:
+  /** Declared as a `def` so that implementations may use a `lazy val`. */
+  def indices: Seq[Int] = Seq(index)

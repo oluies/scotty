@@ -3,204 +3,95 @@ package scotty.simulator.math
 import scotty.ErrorMessage
 import scotty.quantum.QuantumContext.{Matrix, Vector}
 import scotty.quantum.math.Complex
-import scotty.quantum.math.MathUtils._
+import scotty.quantum.math.MathUtils.*
 
-/**
-  * The <code>Matrix</code> object contains pure matrix methods from linear algebra.
+/** Pure linear-algebra helpers for the interleaved complex [[Matrix]] layout.
   *
-  * Complex numbers are represented with two consecutive <code>Double</code>s. All matrix
-  * data is represented in a single array of arrays. Matricies for most methods have to
-  * be square and unitary.
+  * A matrix of dimension `n` is an `n`-element array of rows, each row holding `2 * n` doubles as
+  * `(re, im, re, im, ...)`. All functions here are referentially transparent and never mutate their
+  * arguments.
   */
-object MatrixWrapper {
-  /**
-    * Checks if the matrix is a unitary matrix.
-    * @param matrix Array of arrays of doubles.
-    * @return Boolean.
-    */
-  def isUnitary(matrix: Matrix): Boolean = areEqual(
-    product(conjugateTranspose(matrix.map(r => r.clone)), matrix),
-    identity(matrix.length)
-  )
+object MatrixWrapper:
+  def isUnitary(matrix: Matrix): Boolean =
+    areEqual(product(conjugateTranspose(matrix), matrix), identity(matrix.length))
 
-  /**
-    * Checks if the matrix is a square matrix.
-    * @param matrix Array of arrays of doubles.
-    * @return Boolean.
-    */
   def isSquare(matrix: Matrix): Boolean =
-    if (matrix.length == 0) true
-    else matrix.length == matrix(0).length / 2
+    if matrix.length == 0 then true else matrix.length == matrix(0).length / 2
 
-  /**
-    * Checks if two matricies are of the same dimension.
-    *
-    * @param m1 Array of arrays of doubles.
-    * @param m2 Array of arrays of doubles.
-    * @return Boolean.
-    */
   def areSameDimension(m1: Matrix, m2: Matrix): Boolean =
-    if (m1.length == 0 && m2.length == 0) true
+    if m1.length == 0 && m2.length == 0 then true
     else m1.length == m2.length && m1(0).length == m2(0).length
 
-  /**
-    * Checks if a matrix and a vector are of the same dimension.
-    *
-    * @param matrix Array of arrays of doubles.
-    * @param vector Array of doubles.
-    * @return Boolean.
-    */
-  def areSameDimension(matrix: Matrix, vector: Vector): Boolean = vector.length == vector.length
+  def areSameDimension(matrix: Matrix, vector: Vector): Boolean =
+    matrix.length == 0 || matrix.length * 2 == vector.length
 
-  /**
-    * Checks if two square matricies of the same dimension are the same.
-    *
-    * @param m1 Array of arrays of doubles.
-    * @param m2 Array of arrays of doubles.
-    * @return Boolean.
-    */
-  def areEqual (m1: Matrix, m2: Matrix): Boolean = {
+  def areEqual(m1: Matrix, m2: Matrix): Boolean =
     require(isSquare(m1) && isSquare(m2), ErrorMessage.MatrixNotSquare)
     require(areSameDimension(m1, m2), ErrorMessage.NotSameDimension)
 
-    for (rowIndex <- m1.indices) {
-      for (valueIndex <- m1.indices) {
-        if ((m1(rowIndex)(2 * valueIndex) !~= m2(rowIndex)(2 * valueIndex)) ||
-          (m1(rowIndex)(2 * valueIndex + 1) !~= m2(rowIndex)(2 * valueIndex + 1))) return false
-      }
-    }
+    m1.indices.forall: row =>
+      m1.indices.forall: col =>
+        (m1(row)(2 * col) ~= m2(row)(2 * col)) && (m1(row)(2 * col + 1) ~= m2(row)(2 * col + 1))
 
-    true
-  }
+  def identity(dimension: Int): Matrix =
+    Array.tabulate(dimension, dimension * 2): (row, idx) =>
+      if idx == row * 2 then 1d else 0d
 
-  /**
-    * Returns an identity matrix of a specific dimension.
-    *
-    * @param dimension Integer dimension value.
-    * @return Array of arrays of doubles.
-    */
-  def identity(dimension: Int): Matrix = {
-    val data = Array.fill(dimension)(Array.fill(dimension * 2)(0f))
-
-    for (i <- 0 until dimension) {
-      data(i)(i * 2) = 1f
-    }
-
-    data
-  }
-
-  /**
-    * Returns the product of two square matricies of the same dimension. This
-    * method is not optimized.
-    *
-    * @param m1 Array of arrays of doubles.
-    * @param m2 Array of arrays of doubles.
-    * @return Array of arrays of doubles.
-    */
-  def product(m1: Matrix, m2: Matrix): Matrix = {
+  def product(m1: Matrix, m2: Matrix): Matrix =
     require(isSquare(m1) && isSquare(m2), ErrorMessage.MatrixNotSquare)
     require(areSameDimension(m1, m2), ErrorMessage.NotSameDimension)
 
-    val result = Array.fill(m1.length)(Array.fill(m1.length * 2)(0f))
-    val dimensions = m1.indices
+    val n = m1.length
+    val result = Array.fill(n)(Array.fill(n * 2)(0d))
 
-    for (rowIndex <- dimensions) {
-      for (val1 <- dimensions) {
-        var sumR = 0f
-        var sumI = 0f
+    for row <- 0 until n; col <- 0 until n do
+      var sumR = 0d
+      var sumI = 0d
 
-        for (val2 <- dimensions) {
-          val r1 = m1(rowIndex)(2 * val2)
-          val i1 = m1(rowIndex)(2 * val2 + 1)
-          val r2 = m2(val2)(2 * val1)
-          val i2 = m2(val2)(2 * val1 + 1)
+      for k <- 0 until n do
+        val (r, i) = Complex.product(m1(row)(2 * k), m1(row)(2 * k + 1), m2(k)(2 * col), m2(k)(2 * col + 1))
 
-          val (r, i) = Complex.product(r1, i1, r2, i2)
+        sumR += r
+        sumI += i
 
-          sumR += r
-          sumI += i
-        }
-
-        result(rowIndex)(2 * val1) = sumR
-        result(rowIndex)(2 * val1 + 1) = sumI
-      }
-    }
+      result(row)(2 * col) = sumR
+      result(row)(2 * col + 1) = sumI
 
     result
-  }
 
-  /**
-    * Returns the product of a square matrix and a vector of the same dimension. This
-    * method is not optimized.
-    *
-    * @param matrix Array of arrays of doubles.
-    * @param vector Array of doubles.
-    * @return Array of doubles.
-    */
-  def product(matrix: Matrix, vector: Vector): Vector = {
+  def product(matrix: Matrix, vector: Vector): Vector =
     require(isSquare(matrix), ErrorMessage.MatrixNotSquare)
     require(areSameDimension(matrix, vector), ErrorMessage.NotSameDimension)
 
-    val newVector = Array.fill(vector.length)(0f)
+    val n = matrix.length
+    val result = Array.fill(vector.length)(0d)
 
-    for (rowIndex <- matrix.indices) {
-      val rowValue = Array(0f, 0f)
+    for row <- 0 until n do
+      var sumR = 0d
+      var sumI = 0d
 
-      for (valueIndex <- matrix.indices) {
-        val doubleValueIndex = 2 * valueIndex
+      for k <- 0 until n do
+        val (r, i) = Complex.product(matrix(row)(2 * k), matrix(row)(2 * k + 1), vector(2 * k), vector(2 * k + 1))
 
-        val (r, i) = Complex.product(
-          matrix(rowIndex)(doubleValueIndex),
-          matrix(rowIndex)(doubleValueIndex + 1),
-          vector(doubleValueIndex),
-          vector(doubleValueIndex + 1))
+        sumR += r
+        sumI += i
 
-        rowValue(0) += r
-        rowValue(1) += i
-      }
+      result(2 * row) = sumR
+      result(2 * row + 1) = sumI
 
-      newVector(2 * rowIndex) = rowValue(0)
-      newVector(2 * rowIndex + 1) = rowValue(1)
-    }
+    result
 
-    newVector
-  }
-
-  /**
-    * Returns the complex conjugate transpose of a square matrix. This method is not
-    * optimized.
+  /** Complex conjugate transpose.
     *
-    * @param matrix Array of arrays of doubles.
-    * @return Array of doubles.
+    * Scotty 0.6 transposed in place and only produced the correct result for 2x2 matrices; this
+    * version allocates a fresh matrix and is correct for every dimension.
     */
-  def conjugateTranspose(matrix: Matrix): Matrix = {
+  def conjugateTranspose(matrix: Matrix): Matrix =
     require(isSquare(matrix), ErrorMessage.MatrixNotSquare)
 
-    val halfDimension = matrix.length / 2
+    val n = matrix.length
 
-    for (rowIndex <- matrix.indices) {
-      for (valueIndex <- matrix.indices) {
-        if (rowIndex == valueIndex) {
-          matrix(rowIndex)(2 * valueIndex + 1) = -matrix(rowIndex)(2 * valueIndex + 1)
-        } else if (rowIndex < halfDimension) {
-          val doubleValueIndex = 2 * valueIndex
-          val doubleRowIndex = 2 * rowIndex
+    Array.tabulate(n, 2 * n): (row, idx) =>
+      val col = idx / 2
 
-          val r1 = matrix(rowIndex)(doubleValueIndex)
-          val i1 = matrix(rowIndex)(doubleValueIndex + 1)
-
-          val r2 = matrix(valueIndex)(doubleRowIndex)
-          val i2 = matrix(valueIndex)(doubleRowIndex + 1)
-
-          matrix(rowIndex)(doubleValueIndex) = r2
-          matrix(rowIndex)(doubleValueIndex + 1) = -i2
-
-          matrix(valueIndex)(doubleRowIndex) = r1
-          matrix(valueIndex)(doubleRowIndex + 1) = -i1
-        }
-      }
-    }
-
-    matrix
-  }
-}
+      if idx % 2 == 0 then matrix(col)(2 * row) else -matrix(col)(2 * row + 1)

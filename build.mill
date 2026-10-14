@@ -1,0 +1,47 @@
+package build
+
+import mill.*
+import mill.scalalib.*
+import mill.javalib.publish.*
+
+/** Mill build for Scotty, kept in sync with build.sbt.
+  *
+  * Usage: `mill scotty.compile`, `mill scotty.test`, `mill scotty.publishM2Local`.
+  */
+object scotty extends ScalaModule with PublishModule {
+  def scalaVersion = "3.3.8"
+
+  def publishVersion = "0.7.0-SNAPSHOT"
+
+  def scalacOptions = Seq(
+    "-deprecation",
+    "-feature",
+    "-unchecked",
+    "-explain-types",
+    "-source:3.3"
+  )
+
+  def mvnDeps = Seq(
+    mvn"org.scala-lang.modules::scala-parallel-collections:1.2.0"
+  )
+
+  def sources = Task.Sources(moduleDir / os.up / "src" / "main" / "scala")
+
+  def pomSettings = PomSettings(
+    description = "Quantum computing in Scala: state-vector simulator plus a density-matrix and quantum-channel layer.",
+    organization = "xyz.entangled",
+    url = "https://github.com/entangled-xyz/scotty",
+    licenses = Seq(License.`Apache-2.0`),
+    versionControl = VersionControl.github("entangled-xyz", "scotty"),
+    developers = Seq(Developer("vasinov", "Vasily Vasinov", "https://www.vasinov.com"))
+  )
+
+  object test extends ScalaTests with TestModule.ScalaTest {
+    def mvnDeps = Seq(
+      mvn"org.scalatest::scalatest:3.2.20",
+      mvn"org.scalactic::scalactic:3.2.20"
+    )
+
+    def sources = Task.Sources(moduleDir / os.up / os.up / "src" / "test" / "scala")
+  }
+}

@@ -1,12 +1,12 @@
 package scotty.simulator
 
-import org.scalatest.FlatSpec
+import org.scalatest.flatspec.AnyFlatSpec
 import scotty.TestHelpers
 import scotty.quantum.gate.StandardGate.{H, I, RX, RY, RZ, X}
 import scotty.quantum.math.Complex
-import scotty.quantum._
+import scotty.quantum.*
 
-class StateReaderSpec extends FlatSpec with TestHelpers {
+class StateReaderSpec extends AnyFlatSpec with TestHelpers {
   "StateProbabilityReader" should "read correct StateData" in {
     val sp = QuantumSimulator().run(Circuit(H(0)))
     val data0 = StateProbabilityReader(sp).read(0)

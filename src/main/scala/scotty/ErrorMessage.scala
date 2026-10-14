@@ -1,9 +1,11 @@
 package scotty
 
-object ErrorMessage {
-  val QubitCountMismatch = "The number of qubits in the register has to be the same as the number of qubits used in all ops."
+object ErrorMessage:
+  val QubitCountMismatch =
+    "The number of qubits in the register has to be the same as the number of qubits used in all ops."
 
-  val GateMatrixDoesntMatchIndexes = "Gate matrix doesn't match the number of qubit indices provided to the gate."
+  val GateMatrixDoesntMatchIndexes =
+    "Gate matrix doesn't match the number of qubit indices provided to the gate."
 
   val GateMatrixNotUnitary = "Gate matrix has to be unitary."
 
@@ -23,9 +25,23 @@ object ErrorMessage {
 
   val SwapGateIndexCountNotTwo = "Swap gate should only have two qubit indices."
 
-  val BlochSphereQubitCountNotOne = "BlochSphereReader only works with the superposition of a single qubit."
+  val BlochSphereQubitCountNotOne =
+    "BlochSphereReader only works with the superposition of a single qubit."
 
   val MatrixNotSquare = "Matrix has to be a square matrix."
 
   val NotSameDimension = "Elements have to have the same dimension."
-}
+
+  val KrausOperatorsNotSameShape = "All Kraus operators of a channel have to have the same shape."
+
+  val KrausOperatorsNotTracePreserving =
+    "Kraus operators of a quantum channel have to satisfy the completeness relation."
+
+  val DensityMatrixNotSquare = "A density matrix has to be square."
+
+  val DensityMatrixDimensionMismatch =
+    "The dimensions of the operands do not match the dimensions of the density matrix."
+
+  val SubsystemIndexOutOfRange = "Subsystem index is out of range for the given dimensions."
+
+  val SubsystemIndexesNotUnique = "Subsystem indices have to be unique."

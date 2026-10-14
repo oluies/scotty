@@ -1,10 +1,10 @@
 package scotty.quantum
 
-import scotty.quantum.QuantumContext._
+import scotty.quantum.QuantumContext.*
 import scotty.quantum.StateProbabilityReader.StateData
 import scotty.quantum.gate.{Gate, TargetGate}
 
-trait QuantumContext {
+trait QuantumContext:
   def tensorProduct(register: QubitRegister, sp1: Superposition, sp2: Superposition): Superposition
 
   def densityMatrix(vector: Vector): Matrix
@@ -19,19 +19,17 @@ trait QuantumContext {
 
   def measure(register: QubitRegister, state: Vector): Collapsed
 
-  def runAndMeasure(circuit: Circuit): Collapsed = {
-    run(circuit) match {
-      case s: Superposition => measure(circuit.register, s.state)
-      case s: Collapsed => s
-    }
-  }
+  def runAndMeasure(circuit: Circuit): Collapsed = run(circuit) match
+    case s: Superposition => measure(circuit.register, s.state)
+    case s: Collapsed     => s
 
   def runExperiment(circuit: Circuit, trialsCount: Int): ExperimentResult
-}
 
-object QuantumContext {
-  type Vector = Array[Float]
-  type Matrix = Array[Array[Float]]
+object QuantumContext:
+  /** Interleaved `(re, im, re, im, ...)` representation of a complex column vector. */
+  type Vector = Array[Double]
 
-  case class QuantumException(message: String) extends Exception(message)
-}
+  /** Row-major matrix whose rows use the [[Vector]] layout. */
+  type Matrix = Array[Array[Double]]
+
+  final case class QuantumException(message: String) extends Exception(message)

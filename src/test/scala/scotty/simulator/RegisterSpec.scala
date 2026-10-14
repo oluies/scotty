@@ -1,9 +1,9 @@
 package scotty.simulator
 
-import org.scalatest.FlatSpec
+import org.scalatest.flatspec.AnyFlatSpec
 import scotty.quantum.{BitRegister, One, Qubit, QubitRegister, Zero}
 
-class RegisterSpec extends FlatSpec {
+class RegisterSpec extends AnyFlatSpec {
   val sim = QuantumSimulator()
 
   "Register" should "throw IllegalArgumentException if qubit labels have duplicates" in {

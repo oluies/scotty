@@ -1,12 +1,12 @@
 package scotty.simulator
 
-import org.scalatest.FlatSpec
+import org.scalatest.flatspec.AnyFlatSpec
 import scotty.TestHelpers
-import scotty.quantum.gate.StandardGate.{X, _}
-import scotty.quantum._
+import scotty.quantum.gate.StandardGate.*
+import scotty.quantum.*
 import scotty.quantum.gate.Controlled
 
-class ControlledGateSpec extends FlatSpec with TestHelpers {
+class ControlledGateSpec extends AnyFlatSpec with TestHelpers {
   "Controlled gate" should "change target if control is 1" in {
     assert(sim.runAndMeasure(Circuit(X(0), Controlled(0, X(1)))).toBitRegister.values == Seq(One(), One()))
   }

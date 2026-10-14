@@ -1,10 +1,10 @@
 package scotty.simulator
 
-import org.scalatest.FlatSpec
-import scotty.quantum.gate.StandardGate._
-import scotty.quantum._
+import org.scalatest.flatspec.AnyFlatSpec
+import scotty.quantum.gate.StandardGate.*
+import scotty.quantum.*
 
-class QuantumSimulatorSpec extends FlatSpec {
+class QuantumSimulatorSpec extends AnyFlatSpec {
   val sim = QuantumSimulator()
 
   "QuantumSimulator" should "run an empty circuit" in {

@@ -1,27 +1,28 @@
 package scotty.simulator
 
-import org.scalatest.FlatSpec
+import org.scalatest.flatspec.AnyFlatSpec
 import scotty.TestHelpers
-import scotty.quantum._
+import scotty.quantum.*
 import scotty.quantum.gate.{DefGate, CompositeGate}
 import scotty.quantum.math.Complex
+import scotty.quantum.math.Complex.toDouble
 
-class DefGateSpec extends FlatSpec with TestHelpers {
+class DefGateSpec extends AnyFlatSpec with TestHelpers {
   val twoByTwoMatrix = Array(
-    Array(0f, 0f, 1f, 0f),
-    Array(1f, 0f, 0f, 0f)
+    Array(0d, 0d, 1d, 0d),
+    Array(1d, 0d, 0d, 0d)
   )
 
   val nonUnitaryMatrix = Array(
-    Array(1f, 0f, 0f, 0f),
-    Array(0f, 0f, 2f, 0f)
+    Array(1d, 0d, 0d, 0d),
+    Array(0d, 0d, 2d, 0d)
   )
 
   val fourByFourMatrix = Array(
-    Array(1f, 0f, 0f, 0f, 0f, 0f, 0f, 0f),
-    Array(0f, 0f, 1f, 0f, 0f, 0f, 0f, 0f),
-    Array(0f, 0f, 0f, 0f, 1f, 0f, 0f, 0f),
-    Array(0f, 0f, 0f, 0f, 0f, 0f, 1f, 0f)
+    Array(1d, 0d, 0d, 0d, 0d, 0d, 0d, 0d),
+    Array(0d, 0d, 1d, 0d, 0d, 0d, 0d, 0d),
+    Array(0d, 0d, 0d, 0d, 1d, 0d, 0d, 0d),
+    Array(0d, 0d, 0d, 0d, 0d, 0d, 1d, 0d)
   )
 
   val rxMatrix = (params: Seq[Double]) => {
@@ -30,7 +31,7 @@ class DefGateSpec extends FlatSpec with TestHelpers {
     Array(
       Array(Complex(Math.cos(theta / 2)), Complex(0, -Math.sin(theta / 2))),
       Array(Complex(0, -Math.sin(theta / 2)), Complex(Math.cos(theta / 2)))
-    ).toFloat
+    ).toDouble
   }
 
   "Custom gate" should "be able to work with a static matrix" in {

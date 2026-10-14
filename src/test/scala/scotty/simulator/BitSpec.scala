@@ -1,10 +1,10 @@
 package scotty.simulator
 
-import org.scalatest.FlatSpec
+import org.scalatest.flatspec.AnyFlatSpec
 import scotty.quantum.math.Complex
 import scotty.quantum.{Bit, One, Zero}
 
-class BitSpec extends FlatSpec {
+class BitSpec extends AnyFlatSpec {
   "Bit" should "be equal to Zero() when int is 0" in {
     assert(Bit(0).isInstanceOf[Zero])
   }
