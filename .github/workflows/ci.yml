@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: [master, pctc]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sbt:
+    name: sbt / JDK ${{ matrix.java }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        java: ['17', '21']
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: ${{ matrix.java }}
+          cache: sbt
+      - uses: sbt/setup-sbt@v1
+      - name: Compile
+        run: sbt -batch compile Test/compile
+      - name: Test
+        run: sbt -batch test
+      - name: Check that the artifact publishes locally
+        run: sbt -batch publishLocal publishM2
+
+  mill:
+    name: mill / JDK 21
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Cache Mill and Coursier
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/mill
+            ~/.cache/coursier
+          key: mill-${{ hashFiles('build.mill', '.mill-version') }}
+          restore-keys: mill-
+      - name: Test
+        run: ./mill scotty.test
