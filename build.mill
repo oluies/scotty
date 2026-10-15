@@ -9,7 +9,7 @@ import mill.javalib.publish.*
   * Usage: `mill scotty.compile`, `mill scotty.test`, `mill scotty.publishM2Local`.
   */
 object scotty extends ScalaModule with PublishModule {
-  def scalaVersion = "3.3.8"
+  def scalaVersion = "3.9.0"
 
   def publishVersion = "0.7.0-SNAPSHOT"
 
@@ -18,7 +18,6 @@ object scotty extends ScalaModule with PublishModule {
     "-feature",
     "-unchecked",
     "-explain-types",
-    "-source:3.3",
     "-release:21"
   )
 

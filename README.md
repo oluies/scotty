@@ -44,9 +44,9 @@ This example is kept honest by `src/test/scala/scotty/ReadmeExampleSpec.scala`.
 
 ## Building
 
-Scotty targets **Scala 3.3 LTS**. It is built and tested on the latest JDK (27 at the time of
-writing) and emits bytecode for **JDK 21 or newer** via `-release:21`, so it stays usable on the
-current LTS. CI covers JDK 21, 25 and 27. Two build definitions are kept in sync; either works.
+Scotty targets **Scala 3.9 LTS**. It is built and tested on the latest JDK (27 at the time of
+writing) and emits bytecode for **JDK 21 or newer** via `-release:21`. Scala 3.9 itself needs JDK 17
+or newer. CI covers JDK 21, 25 and 27. Two build definitions are kept in sync; either works.
 
 ```bash
 sbt test                      # compile and run the suite
@@ -229,6 +229,9 @@ The gate, circuit, register and reader API is unchanged in shape. Four things di
 Deprecated or removed Scala 2 constructs replaced along the way: `implicit class` to `extension`,
 `(a, b).zipped` to `lazyZip`, `xs: _*` to `xs*`, `import p._` to `import p.*`, and ScalaTest's
 `FlatSpec` to `flatspec.AnyFlatSpec`.
+
+The port first landed on Scala 3.3 LTS and moved to 3.9 LTS when that line
+[superseded it](https://www.scala-lang.org/news/3.9/) in September 2026.
 
 ## Getting Started
 

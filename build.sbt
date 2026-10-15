@@ -1,4 +1,4 @@
-val scala3Version = "3.3.8" // LTS
+val scala3Version = "3.9.0" // LTS
 val scalaTestVersion = "3.2.20"
 val parallelCollectionsVersion = "1.2.0"
 
@@ -22,14 +22,13 @@ lazy val root = (project in file("."))
       )
     ),
     // Built and tested on the latest JDK (27 at the time of writing); `-release` keeps the emitted
-    // bytecode and the visible JDK API at the current LTS so the library stays usable there.
-    // Scala 3.3.8 accepts `-release` up to 25.
+    // bytecode and the visible JDK API at JDK 21 so the library stays usable there. Scala 3.9
+    // accepts `-release` up to 25, and itself needs JDK 17 or newer to run.
     scalacOptions ++= Seq(
       "-deprecation",
       "-feature",
       "-unchecked",
       "-explain-types",
-      "-source:3.3",
       "-release:21"
     ),
     libraryDependencies ++= Seq(

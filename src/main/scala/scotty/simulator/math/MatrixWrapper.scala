@@ -5,7 +5,7 @@ import scotty.quantum.QuantumContext.{Matrix, Vector}
 import scotty.quantum.math.Complex
 import scotty.quantum.math.MathUtils.*
 
-/** Pure linear-algebra helpers for the interleaved complex [[Matrix]] layout.
+/** Pure linear-algebra helpers for the interleaved complex [[scotty.quantum.QuantumContext.Matrix]] layout.
   *
   * A matrix of dimension `n` is an `n`-element array of rows, each row holding `2 * n` doubles as
   * `(re, im, re, im, ...)`. All functions here are referentially transparent and never mutate their

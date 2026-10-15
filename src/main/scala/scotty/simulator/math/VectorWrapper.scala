@@ -5,7 +5,7 @@ import scala.collection.parallel.immutable.ParVector
 import scotty.quantum.QuantumContext.{Matrix, Vector}
 import scotty.quantum.math.Complex
 
-/** Pure vector helpers for the interleaved complex [[Vector]] layout. */
+/** Pure vector helpers for the interleaved complex [[scotty.quantum.QuantumContext.Vector]] layout. */
 object VectorWrapper:
   def tensorProduct(v1: Vector, v2: Vector, taskSupport: Option[TaskSupport]): Vector =
     val v1Length = v1.length / 2
