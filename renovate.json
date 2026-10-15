@@ -37,6 +37,20 @@
         ".mill-version",
         "mill"
       ]
+    },
+    {
+      "description": "sbt 2.x is a breaking change to the build definition. Stay on the 1.x line until that migration is done deliberately.",
+      "matchPackageNames": [
+        "org.scala-sbt:sbt-launch"
+      ],
+      "allowedVersions": "/^1\\./"
+    },
+    {
+      "description": "Same for Mill: a future 2.x would change the build API, so take it on purpose rather than by pull request.",
+      "matchPackageNames": [
+        "com-lihaoyi/mill"
+      ],
+      "allowedVersions": "/^1\\./"
     }
   ],
   "customManagers": [
