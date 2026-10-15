@@ -66,15 +66,27 @@
     },
     {
       "customType": "regex",
-      "description": "Dependencies declared in the Mill build",
+      "description": "Scala dependencies in the Mill build: `mvn\"org::artifact:version\"` resolves to the _3 artifact",
       "managerFilePatterns": [
         "/^build\\.mill$/"
       ],
       "matchStrings": [
-        "mvn\"(?<depName>[^:\"]+):{1,3}(?<packageName>[^:\"]+):(?<currentValue>[^\"]+)\""
+        "mvn\"(?<organization>[^:\"]+)::(?<artifact>[^:\"]+):(?<currentValue>[^\"]+)\""
       ],
-      "datasourceTemplate": "maven",
-      "depNameTemplate": "{{{depName}}}:{{{packageName}}}"
+      "depNameTemplate": "{{{organization}}}:{{{artifact}}}_3",
+      "datasourceTemplate": "maven"
+    },
+    {
+      "customType": "regex",
+      "description": "Java dependencies in the Mill build: `mvn\"org:artifact:version\"`",
+      "managerFilePatterns": [
+        "/^build\\.mill$/"
+      ],
+      "matchStrings": [
+        "mvn\"(?<organization>[^:\"]+):(?<artifact>[^:\"][^:\"]*):(?<currentValue>[^\"]+)\""
+      ],
+      "depNameTemplate": "{{{organization}}}:{{{artifact}}}",
+      "datasourceTemplate": "maven"
     },
     {
       "customType": "regex",
