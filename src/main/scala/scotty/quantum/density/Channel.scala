@@ -28,11 +28,15 @@ final case class Channel(inputDims: Vector[Int], outputDims: Vector[Int], kraus:
 
   def outputDim: Int = outputDims.product
 
-  /** `sum_k K_k^dagger K_k`, which must be the identity for a trace-preserving map. */
-  def completeness: ComplexMatrix = ComplexMatrix.sum(kraus.map(k => k.adjoint.multiply(k)))
+  /** `sum_k K_k^dagger K_k`, which must be the identity for a trace-preserving map.
+    *
+    * Memoised: a `Channel` is immutable, and `isTracePreserving` is the sort of thing callers ask
+    * repeatedly.
+    */
+  lazy val completeness: ComplexMatrix = ComplexMatrix.sum(kraus.map(k => k.adjoint.multiply(k)))
 
   /** Largest entrywise deviation of the completeness relation from the identity. */
-  def completenessDefect: Double = completeness.maxAbsDifference(ComplexMatrix.identity(inputDim))
+  lazy val completenessDefect: Double = completeness.maxAbsDifference(ComplexMatrix.identity(inputDim))
 
   def isTracePreserving(tolerance: Double = ComplexMatrix.Tolerance): Boolean =
     completenessDefect <= tolerance
