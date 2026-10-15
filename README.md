@@ -1,6 +1,6 @@
 # Scotty: Quantum Computing in Scala
 
-[![CI](https://github.com/entangled-xyz/scotty/actions/workflows/ci.yml/badge.svg)](https://github.com/entangled-xyz/scotty/actions/workflows/ci.yml) [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+[![CI](https://github.com/oluies/scotty/actions/workflows/ci.yml/badge.svg?branch=pctc)](https://github.com/oluies/scotty/actions/workflows/ci.yml) [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
 *"Whatever you say, sir. Thy will be done."*—Montgomery Scott
 
