@@ -14,12 +14,12 @@
   ],
   "packageRules": [
     {
-      "description": "Scotty tracks the Scala 3 LTS line, so stay on 3.3.x.",
+      "description": "This project tracks the Scala 3 LTS line, currently 3.9.x. `scala` is the name the built-in sbt manager uses; the glob covers everything else under the organisation.",
       "matchPackageNames": [
-        "org.scala-lang:scala3-library",
-        "org.scala-lang:scala3-compiler"
+        "scala",
+        "org.scala-lang:**"
       ],
-      "allowedVersions": "/^3\\.3\\./"
+      "allowedVersions": "/^3\\.9\\./"
     },
     {
       "description": "Group the test framework so scalatest and scalactic move together.",
@@ -39,9 +39,10 @@
       ]
     },
     {
-      "description": "sbt 2.x is a breaking change to the build definition. Stay on the 1.x line until that migration is done deliberately.",
+      "description": "sbt 2.x is a breaking change to the build definition. Stay on the 1.x line until that migration is done deliberately. `sbt/sbt` is the name the built-in sbt manager uses for project/build.properties.",
       "matchPackageNames": [
-        "org.scala-sbt:sbt-launch"
+        "sbt/sbt",
+        "org.scala-sbt:**"
       ],
       "allowedVersions": "/^1\\./"
     },
@@ -54,18 +55,6 @@
     }
   ],
   "customManagers": [
-    {
-      "customType": "regex",
-      "description": "sbt launcher version in project/build.properties",
-      "managerFilePatterns": [
-        "/^project/build\\.properties$/"
-      ],
-      "matchStrings": [
-        "sbt\\.version\\s*=\\s*(?<currentValue>\\S+)"
-      ],
-      "depNameTemplate": "org.scala-sbt:sbt-launch",
-      "datasourceTemplate": "maven"
-    },
     {
       "customType": "regex",
       "description": "Mill version pinned in .mill-version",
@@ -100,18 +89,6 @@
         "mvn\"(?<organization>[^:\"]+):(?<artifact>[^:\"][^:\"]*):(?<currentValue>[^\"]+)\""
       ],
       "depNameTemplate": "{{{organization}}}:{{{artifact}}}",
-      "datasourceTemplate": "maven"
-    },
-    {
-      "customType": "regex",
-      "description": "Versions pinned as vals in build.sbt",
-      "managerFilePatterns": [
-        "/^build\\.sbt$/"
-      ],
-      "matchStrings": [
-        "val scala3Version = \"(?<currentValue>[^\"]+)\" // LTS"
-      ],
-      "depNameTemplate": "org.scala-lang:scala3-library_3",
       "datasourceTemplate": "maven"
     }
   ]
