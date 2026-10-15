@@ -4,9 +4,14 @@
     "config:recommended",
     ":semanticCommitsDisabled"
   ],
-  "schedule": ["before 6am on monday"],
+  "forkProcessing": "enabled",
+  "schedule": [
+    "before 6am on monday"
+  ],
   "prConcurrentLimit": 5,
-  "labels": ["dependencies"],
+  "labels": [
+    "dependencies"
+  ],
   "packageRules": [
     {
       "description": "Scotty tracks the Scala 3 LTS line, so stay on 3.3.x.",
@@ -38,23 +43,33 @@
     {
       "customType": "regex",
       "description": "sbt launcher version in project/build.properties",
-      "managerFilePatterns": ["/^project/build\\.properties$/"],
-      "matchStrings": ["sbt\\.version\\s*=\\s*(?<currentValue>\\S+)"],
+      "managerFilePatterns": [
+        "/^project/build\\.properties$/"
+      ],
+      "matchStrings": [
+        "sbt\\.version\\s*=\\s*(?<currentValue>\\S+)"
+      ],
       "depNameTemplate": "org.scala-sbt:sbt-launch",
       "datasourceTemplate": "maven"
     },
     {
       "customType": "regex",
       "description": "Mill version pinned in .mill-version",
-      "managerFilePatterns": ["/^\\.mill-version$/"],
-      "matchStrings": ["(?<currentValue>[\\d.]+)"],
+      "managerFilePatterns": [
+        "/^\\.mill-version$/"
+      ],
+      "matchStrings": [
+        "(?<currentValue>[\\d.]+)"
+      ],
       "depNameTemplate": "com-lihaoyi/mill",
       "datasourceTemplate": "github-releases"
     },
     {
       "customType": "regex",
       "description": "Dependencies declared in the Mill build",
-      "managerFilePatterns": ["/^build\\.mill$/"],
+      "managerFilePatterns": [
+        "/^build\\.mill$/"
+      ],
       "matchStrings": [
         "mvn\"(?<depName>[^:\"]+):{1,3}(?<packageName>[^:\"]+):(?<currentValue>[^\"]+)\""
       ],
@@ -64,7 +79,9 @@
     {
       "customType": "regex",
       "description": "Versions pinned as vals in build.sbt",
-      "managerFilePatterns": ["/^build\\.sbt$/"],
+      "managerFilePatterns": [
+        "/^build\\.sbt$/"
+      ],
       "matchStrings": [
         "val scala3Version = \"(?<currentValue>[^\"]+)\" // LTS"
       ],

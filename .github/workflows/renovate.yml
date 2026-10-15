@@ -1,0 +1,51 @@
+name: Renovate
+
+on:
+  schedule:
+    # Mondays at 04:00 UTC, inside the "before 6am on monday" window set in renovate.json.
+    - cron: '0 4 * * 1'
+  workflow_dispatch:
+    inputs:
+      dryRun:
+        description: Report what would change without opening pull requests
+        type: boolean
+        default: false
+      logLevel:
+        description: Renovate log level
+        type: choice
+        options: [info, debug]
+        default: info
+  push:
+    branches: [pctc]
+    paths:
+      - renovate.json
+      - .github/workflows/renovate.yml
+
+concurrency:
+  group: renovate
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  renovate:
+    name: renovate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Run Renovate
+        uses: renovatebot/github-action@v46.3.8
+        with:
+          # A classic or fine-grained PAT in the RENOVATE_TOKEN secret lets the pull requests
+          # Renovate opens trigger CI. The GITHUB_TOKEN fallback still opens them, but GitHub does
+          # not fire workflows for events raised by GITHUB_TOKEN, so CI would not run on them.
+          token: ${{ secrets.RENOVATE_TOKEN || secrets.GITHUB_TOKEN }}
+        env:
+          LOG_LEVEL: ${{ inputs.logLevel || 'info' }}
+          RENOVATE_PLATFORM: github
+          RENOVATE_AUTODISCOVER: 'false'
+          RENOVATE_REPOSITORIES: ${{ github.repository }}
+          RENOVATE_DRY_RUN: ${{ inputs.dryRun && 'full' || 'null' }}
