@@ -44,7 +44,9 @@ This example is kept honest by `src/test/scala/scotty/ReadmeExampleSpec.scala`.
 
 ## Building
 
-Scotty targets **Scala 3.3 LTS** on **JDK 17 or newer**. Two build definitions are kept in sync; either works.
+Scotty targets **Scala 3.3 LTS**. It is built and tested on the latest JDK (27 at the time of
+writing) and emits bytecode for **JDK 21 or newer** via `-release:21`, so it stays usable on the
+current LTS. CI covers JDK 21, 25 and 27. Two build definitions are kept in sync; either works.
 
 ```bash
 sbt test                      # compile and run the suite

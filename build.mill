@@ -18,7 +18,8 @@ object scotty extends ScalaModule with PublishModule {
     "-feature",
     "-unchecked",
     "-explain-types",
-    "-source:3.3"
+    "-source:3.3",
+    "-release:21"
   )
 
   def mvnDeps = Seq(

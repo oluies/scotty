@@ -21,12 +21,16 @@ lazy val root = (project in file("."))
         url = url("https://www.vasinov.com")
       )
     ),
+    // Built and tested on the latest JDK (27 at the time of writing); `-release` keeps the emitted
+    // bytecode and the visible JDK API at the current LTS so the library stays usable there.
+    // Scala 3.3.8 accepts `-release` up to 25.
     scalacOptions ++= Seq(
       "-deprecation",
       "-feature",
       "-unchecked",
       "-explain-types",
-      "-source:3.3"
+      "-source:3.3",
+      "-release:21"
     ),
     libraryDependencies ++= Seq(
       "org.scala-lang.modules" %% "scala-parallel-collections" % parallelCollectionsVersion,
