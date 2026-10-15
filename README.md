@@ -151,6 +151,18 @@ matrices of boxed complex numbers, which measures about four times the cost of t
 itself. `DensityMatrix.isPositiveSemidefinite` goes through `Cholesky`; `CholeskySpec` pins both
 entry points against `Eigen` on randomised Hermitian and positive semidefinite matrices.
 
+### `NullSpace`
+
+```scala
+NullSpace.basis(matrix, tolerance)   // a basis for { x : matrix x = 0 }, as column vectors
+```
+
+Gauss-Jordan elimination with partial pivoting, for any shape, with the zero threshold taken
+relative to the largest magnitude in the matrix. This is what turns a fixed-point condition into
+something solvable: a self-consistency requirement `rho = M[rho]` for linear `M` is the kernel of
+`M - I`, and the dimension of that kernel says whether the solution is unique. Iterating `M` is not
+a substitute — it need not converge at all.
+
 ### `Channel`
 
 A completely positive map as a list of Kraus operators, with the input and output factorisations
