@@ -53,8 +53,9 @@ final case class DensityMatrix(dims: Vector[Int], matrix: ComplexMatrix):
 
   def isHermitian(tolerance: Double = ComplexMatrix.Tolerance): Boolean = matrix.isHermitian(tolerance)
 
+  /** Decided by [[Cholesky]], which is far cheaper than the eigenvalues [[Eigen]] would compute. */
   def isPositiveSemidefinite(tolerance: Double = 1e-10): Boolean =
-    Eigen.isPositiveSemidefinite(matrix, tolerance)
+    Cholesky.isPositiveSemidefinite(matrix, tolerance)
 
   def normalized: DensityMatrix =
     val t = realTrace

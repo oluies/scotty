@@ -131,6 +131,26 @@ real symmetric `2d x 2d` embedding `[[Re H, -Im H], [Im H, Re H]]`. That is accu
 `1e-14` and fast enough for the dimensions this layer targets (at most 16). `Eigen` also exposes
 `minEigenvalue`, `maxEigenvalue` and `isPositiveSemidefinite`.
 
+### `Cholesky`
+
+When only the *sign* of the smallest eigenvalue is wanted, `Eigen` is the wrong tool: `M >= -tol I`
+is exactly the question of whether `M + tol I` factorises, which is one `n^3 / 3` pass with no
+iteration. `scotty.quantum.density.Cholesky` answers it directly and measures about ten times
+faster than the Jacobi route at these sizes.
+
+```scala
+Cholesky.isPositiveDefinite(m, shift)            // is m + shift * I positive definite?
+Cholesky.isPositiveSemidefinite(m, tolerance)    // minEigenvalue(m) >= -tolerance
+Cholesky.differenceIsPositiveDefinite(a, b, factor, relativeTolerance)
+```
+
+The last one decides `a - factor * b > 0` without ever materialising the difference, with the shift
+taken as `relativeTolerance` times the largest magnitude in it. Building the difference as a
+`ComplexMatrix` and passing it to `isPositiveDefinite` gives the same answer but allocates two
+matrices of boxed complex numbers, which measures about four times the cost of the factorisation
+itself. `DensityMatrix.isPositiveSemidefinite` goes through `Cholesky`; `CholeskySpec` pins both
+entry points against `Eigen` on randomised Hermitian and positive semidefinite matrices.
+
 ### `Channel`
 
 A completely positive map as a list of Kraus operators, with the input and output factorisations
