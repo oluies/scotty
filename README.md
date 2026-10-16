@@ -68,6 +68,13 @@ number used everywhere else. Everything in it is immutable.
 
 A dense, rectangular, row-major complex matrix — the representation Kraus operators live in.
 
+Entries are stored as interleaved `(re, im)` primitives in an `IArray[Double]`, not as
+`Vector[Complex]`. The public API still speaks in `Complex`, and `apply(row, col)` builds one on
+demand, but anything in a loop should read `realAt(row, col)` and `imagAt(row, col)`, which allocate
+nothing. `Cholesky` and `Eigen` do. Measured against the boxed representation it is worth about
+1.6x on a 6x6 positive-definiteness test and 2.5x on a Kronecker product, which is most of the gap
+to hand-written primitive code.
+
 ```scala
 import scotty.quantum.density.*
 import scotty.quantum.math.Complex
@@ -89,6 +96,7 @@ h.toRaw                                             // back to Scotty's interlea
 | Constructor | Meaning |
 | --- | --- |
 | `ComplexMatrix(rows, cols, data)` | row-major `Vector[Complex]` |
+| `ComplexMatrix.fromInterleaved(rows, cols, values)` | row-major interleaved `(re, im)` doubles |
 | `ComplexMatrix.fromRows(rows)` | from a `Seq[Seq[Complex]]` |
 | `ComplexMatrix.fromRaw(matrix)` | from Scotty's interleaved `(re, im, …)` matrix |
 | `ComplexMatrix.column(amplitudes)` / `columnFromRaw(vector)` | a column vector |

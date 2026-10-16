@@ -21,13 +21,11 @@ object Eigen:
 
     val d = matrix.rows
     val embedded = Array.tabulate(2 * d, 2 * d): (row, col) =>
-      val c = matrix(row % d, col % d)
-
       (row / d, col / d) match
-        case (0, 0) => c.r
-        case (1, 1) => c.r
-        case (0, 1) => -c.i
-        case _      => c.i
+        case (0, 0) => matrix.realAt(row % d, col % d)
+        case (1, 1) => matrix.realAt(row % d, col % d)
+        case (0, 1) => -matrix.imagAt(row % d, col % d)
+        case _      => matrix.imagAt(row % d, col % d)
 
     val doubled = jacobi(embedded).sorted
 

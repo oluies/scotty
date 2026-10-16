@@ -10,7 +10,9 @@ import scotty.ErrorMessage
   * and it measures about ten times faster at the sizes this layer targets.
   *
   * Use [[Eigen]] when the eigenvalues themselves are wanted, and this when only the sign of the
-  * smallest one is. The factorisation runs on local scratch arrays; nothing visible is mutated.
+  * smallest one is. The factorisation runs on local scratch arrays and reads its operands through
+  * [[ComplexMatrix.realAt]] and [[ComplexMatrix.imagAt]], so it allocates nothing per entry;
+  * nothing visible is mutated.
   */
 object Cholesky:
   /** True when `matrix + shift * I` is positive definite.
@@ -58,10 +60,8 @@ object Cholesky:
       var col = 0
 
       while col < n do
-        val l = left(row, col)
-        val r = right(row, col)
-        val dr = l.r - factor * r.r
-        val di = l.i - factor * r.i
+        val dr = left.realAt(row, col) - factor * right.realAt(row, col)
+        val di = left.imagAt(row, col) - factor * right.imagAt(row, col)
         val magnitude = Math.sqrt(dr * dr + di * di)
 
         if magnitude > largest then largest = magnitude
@@ -91,7 +91,7 @@ object Cholesky:
 
     while row < n && definite do
       // The pivot is the diagonal of the difference minus the squared norm of the row of L so far.
-      var pivotSquared = left(row, row).r - factor * right(row, row).r + shift
+      var pivotSquared = left.realAt(row, row) - factor * right.realAt(row, row) + shift
       var k = 0
 
       while k < row do
@@ -110,10 +110,8 @@ object Cholesky:
         var below = row + 1
 
         while below < n do
-          val l = left(below, row)
-          val r = right(below, row)
-          var sumR = l.r - factor * r.r
-          var sumI = l.i - factor * r.i
+          var sumR = left.realAt(below, row) - factor * right.realAt(below, row)
+          var sumI = left.imagAt(below, row) - factor * right.imagAt(below, row)
           var j = 0
 
           // Subtract L(below, j) * conj(L(row, j)).
