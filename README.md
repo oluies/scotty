@@ -255,6 +255,38 @@ modulus. Modulo 15 that compilation is pleasant: multiplication by 2 is a cyclic
 work bits because `2^4 = 1 (mod 15)`, and bitwise negation is multiplication by `-1`, so every base
 is a rotation optionally followed by a negation — `CSWAP`s and `CNOT`s, nothing more.
 
+### Tests
+
+Eighteen cases across three specs. They are written to check the **answer**, not agreement with
+another implementation, which is the property that makes them useful as verification vectors: a
+diff against a second simulator only tells you two things agree, whereas a search that stops
+finding its target tells you something is wrong.
+
+```bash
+sbt 'testOnly scotty.algorithm.*'
+```
+
+| spec | what it pins down |
+|---|---|
+| `QftSpec` | The transform matches an **explicitly constructed DFT matrix** on every basis state for 1 to 4 qubits — amplitude by amplitude, real and imaginary parts, to `1e-9`. This is what fixes the qubit-ordering convention; checking a QFT against another circuit would not. Also: the inverse undoes it, and `|0>` maps to a uniform superposition. |
+| `GroverSpec` | Amplitude concentrates on the marked state for 2 to 6 qubits (`> 0.94`, the analytic floor over that range), exactly on two qubits, and better than `0.99` by five. Two marked states are found at once. Every *unmarked* state is left below `0.001` — the check that catches an oracle that amplifies indiscriminately. The iteration count is `floor(pi/4 * sqrt(N/M))`, and the oracle flips the marked amplitude's sign and nothing else. |
+| `ShorSpec` | The compiled multiplier has the period classical arithmetic says it does, **for all six bases** it covers — not just the textbook `a = 7`. The period-finding circuit puts over 99% of its weight on multiples of `2^c / r`, with each peak within `0.01` of `1/r`, and the distribution normalises. Continued fractions recover the period; a zero measurement correctly yields nothing. The classical tail factors 15 into `(3, 5)`, and an end-to-end run takes every outcome the circuit actually produces with real weight and requires that the factorisations they yield are exactly `(3, 5)`. |
+
+Both algorithms are also re-run through the fusion pass in `GateFusionSpec`, at every fusion width
+from 1 to 6:
+
+- `should reproduce the simulator on Grover's search` and the same for Shor and the QFT — the
+  amplitude-level comparison against the unfused simulator;
+- `should still find Grover's marked state at every fusion width` and
+  `should still factor 15 at every fusion width` — the answer-level checks. A fusion bug that
+  preserved norm and phase relationships but broke the algorithm would pass the first pair and fail
+  this one;
+- Grover also supplies the two structural cases: that a multi-controlled `Z` lowers to `2^k` entries
+  rather than `4^k`, and that its all-qubit controlled `Z` is left native rather than fused.
+
+`ReadmeExampleSpec` runs the snippets above, so the documented API cannot drift out of compiling and
+the figures quoted in this file cannot drift out of being true.
+
 ## Gate fusion
 
 `scotty.simulator.fusion` collapses runs of gates that touch the same qubits into a single operator.
