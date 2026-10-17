@@ -8,7 +8,7 @@ import scotty.quantum.*
 import scotty.quantum.QuantumContext.*
 import scotty.quantum.StateProbabilityReader.StateData
 import scotty.quantum.gate.*
-import scotty.quantum.gate.StandardGate.{CCNOT, CNOT, CPHASE, CPHASE00, CPHASE01, CPHASE10, CSWAP, ISWAP, PHASE, PSWAP, S, SWAP, X}
+import scotty.quantum.gate.StandardGate.{CPHASE00, CPHASE01, CSWAP, ISWAP, PSWAP, SWAP}
 import scotty.quantum.math.{Complex, MathUtils}
 import scotty.simulator.math.{MatrixWrapper, VectorWrapper}
 
@@ -180,23 +180,15 @@ final case class QuantumSimulator(ec: Option[ExecutionContext], random: Random) 
   def isUnitary(g: TargetGate): Boolean = MatrixWrapper.isUnitary(g.matrix)
 
 object QuantumSimulator:
-  val swap: (Int, Int) => CompositeGate =
-    (i0, i1) => CompositeGate(CNOT(i0, i1), CNOT(i1, i0), CNOT(i0, i1))
-
-  val cswap: (Int, Int, Int) => CompositeGate =
-    (i0, i1, i2) => CompositeGate(CNOT(i2, i1), CCNOT(i0, i1, i2), CNOT(i2, i1))
-
-  val iswap: (Int, Int) => CompositeGate =
-    (i0, i1) => CompositeGate(SWAP(i0, i1), S(i0), S(i1), CPHASE(Math.PI / 2, i0, i1))
-
-  val pswap: (Double, Int, Int) => CompositeGate =
-    (phi, i0, i1) => CompositeGate(SWAP(i0, i1), PHASE(phi, i0), PHASE(phi, i1), CPHASE(phi, i0, i1))
-
-  val cphase00: (Double, Int, Int) => CompositeGate =
-    (phi, i0, i1) => CompositeGate(X(i0), CPHASE10(phi, i0, i1), X(i0))
-
-  val cphase01: (Double, Int, Int) => CompositeGate =
-    (phi, i0, i1) => CompositeGate(X(i0), CPHASE(phi, i0, i1), X(i0))
+  // Kept as aliases so existing callers still compile. The definitions live in
+  // scotty.quantum.gate.Decompositions, which has no parallel-collections dependency and so can be
+  // reached from code that has to link under Scala.js.
+  val swap: (Int, Int) => CompositeGate = Decompositions.swap
+  val cswap: (Int, Int, Int) => CompositeGate = Decompositions.cswap
+  val iswap: (Int, Int) => CompositeGate = Decompositions.iswap
+  val pswap: (Double, Int, Int) => CompositeGate = Decompositions.pswap
+  val cphase00: (Double, Int, Int) => CompositeGate = Decompositions.cphase00
+  val cphase01: (Double, Int, Int) => CompositeGate = Decompositions.cphase01
 
   def apply(): QuantumSimulator = QuantumSimulator(None, new Random())
 

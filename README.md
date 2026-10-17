@@ -225,6 +225,142 @@ Returning the unnormalised post-measurement operator *and* the probability is wh
 needs: the probability is the quantity a P-CTC loop renormalises away, and the unnormalised operator
 is what feeds the next step.
 
+## Algorithms
+
+`scotty.algorithm` holds worked implementations, each with tests that check the *answer* rather than
+agreement with another implementation. They double as verification vectors: a bug that preserved
+norm and phase relationships would still be caught by a search that stops finding its target.
+
+```scala
+// The quantum Fourier transform, least-significant qubit first. Checked against an explicitly
+// constructed DFT matrix on every basis state, not against another circuit.
+Qft.gates((0 until 4).toIndexedSeq)
+Qft.inverseGates((0 until 4).toIndexedSeq)
+
+// Grover's search. Marked states are integers read with qubit 0 as the least significant bit.
+val circuit = Grover.circuit(qubitCount = 5, marked = 21)   // optimal iteration count
+Grover.iterations(5)                                        // floor(pi/4 * sqrt(N/M)) = 4
+sim.runAndMeasure(circuit).toBinary                         // "10101" with probability > 0.999
+
+// Shor's period finding for N = 15, with a hand-compiled modular exponentiation.
+val periods = Shor.periodCircuit(a = 7, countingQubits = 4)
+Shor.period(a = 7, y = 4, q = 16)                           // Some(4)
+Shor.factor(a = 7, y = 4, q = 16)                           // Some((3, 5))
+```
+
+Shor is restricted to 15 on purpose. A general modular exponentiation for an `m`-bit modulus needs
+on the order of `m^3` gates and `2m + 3` qubits, which puts even 21 out of reach of anything holding
+`2^n` amplitudes; every Shor implementation that actually runs compiles the arithmetic for one
+modulus. Modulo 15 that compilation is pleasant: multiplication by 2 is a cyclic rotation of the four
+work bits because `2^4 = 1 (mod 15)`, and bitwise negation is multiplication by `-1`, so every base
+is a rotation optionally followed by a negation — `CSWAP`s and `CNOT`s, nothing more.
+
+### Tests
+
+Eighteen cases across three specs. They are written to check the **answer**, not agreement with
+another implementation, which is the property that makes them useful as verification vectors: a
+diff against a second simulator only tells you two things agree, whereas a search that stops
+finding its target tells you something is wrong.
+
+```bash
+sbt 'testOnly scotty.algorithm.*'
+```
+
+| spec | what it pins down |
+|---|---|
+| `QftSpec` | The transform matches an **explicitly constructed DFT matrix** on every basis state for 1 to 4 qubits — amplitude by amplitude, real and imaginary parts, to `1e-9`. This is what fixes the qubit-ordering convention; checking a QFT against another circuit would not. Also: the inverse undoes it, and `|0>` maps to a uniform superposition. |
+| `GroverSpec` | Amplitude concentrates on the marked state for 2 to 6 qubits (`> 0.94`, the analytic floor over that range), exactly on two qubits, and better than `0.99` by five. Two marked states are found at once. Every *unmarked* state is left below `0.001` — the check that catches an oracle that amplifies indiscriminately. The iteration count is `floor(pi/4 * sqrt(N/M))`, and the oracle flips the marked amplitude's sign and nothing else. |
+| `ShorSpec` | The compiled multiplier has the period classical arithmetic says it does, **for all six bases** it covers — not just the textbook `a = 7`. The period-finding circuit puts over 99% of its weight on multiples of `2^c / r`, with each peak within `0.01` of `1/r`, and the distribution normalises. Continued fractions recover the period; a zero measurement correctly yields nothing. The classical tail factors 15 into `(3, 5)`, and an end-to-end run takes every outcome the circuit actually produces with real weight and requires that the factorisations they yield are exactly `(3, 5)`. |
+
+Both algorithms are also re-run through the fusion pass in `GateFusionSpec`, at every fusion width
+from 1 to 6:
+
+- `should reproduce the simulator on Grover's search` and the same for Shor and the QFT — the
+  amplitude-level comparison against the unfused simulator;
+- `should still find Grover's marked state at every fusion width` and
+  `should still factor 15 at every fusion width` — the answer-level checks. A fusion bug that
+  preserved norm and phase relationships but broke the algorithm would pass the first pair and fail
+  this one;
+- Grover also supplies the two structural cases: that a multi-controlled `Z` lowers to `2^k` entries
+  rather than `4^k`, and that its all-qubit controlled `Z` is left native rather than fused.
+
+`ReadmeExampleSpec` runs the snippets above, so the documented API cannot drift out of compiling and
+the figures quoted in this file cannot drift out of being true.
+
+## Gate fusion
+
+`scotty.simulator.fusion` collapses runs of gates that touch the same qubits into a single operator.
+It exists because applying a one-qubit gate reads an amplitude pair, multiplies it by a 2x2 matrix
+and writes it back — about 28 flops against 64 bytes of traffic, which is far too little arithmetic
+per byte to keep any wide multiplier array busy.
+
+```scala
+val fused = GateFusion.fuse(circuit, maxWidth = 4)
+
+fused.forms                     // Map(Dense -> 26, Diagonal -> 18, Monomial -> 21)
+fused.cost.arithmeticIntensity  // flops per byte of traffic, under the model below
+FusedRunner.run(circuit, 4)     // apply it, in parallel over slices
+```
+
+Operators are stored in the tightest of three forms, a lattice closed under composition. These are
+not three storage optimisations so much as three different machines:
+
+| form | stores | flops/amplitude | what it needs |
+|---|---|---|---|
+| `Diagonal` | `2^k` | 6 | a multiplier and a phase table. No gather, scatter or shuffle at all |
+| `Monomial` | `2^k` | 6 | a shuffle network, but no multiplier array |
+| `Dense` | `4^k` | `8*2^k - 2` | a multiply-accumulate array — the only form that does |
+
+The form is decided by reading the matrix rather than from a table of gate names, so it cannot
+disagree with the semantics and classifies `Dagger` and `DefGate` for free. Controlled gates inherit
+their target's form, which is why `CZ`, `CPHASE` and every multi-controlled `Z` cost `2^k` rather
+than `4^k`. Gates wider than the fusion budget are not lowered at all; they become a `NativeOp` the
+simulator applies through its own path, which is what keeps Grover's all-qubit controlled `Z` from
+asking for a `4^k` operator.
+
+`FusedBlock.lower` mirrors `QuantumSimulator.applyGate` case for case and reuses the same composite
+decompositions from `scotty.quantum.gate.Decompositions`, so a lowered circuit is the simulator's
+semantics by construction rather than by a second reading of the gate definitions. `GateFusionSpec`
+checks that amplitude by amplitude across the gate set, randomised circuits, and the algorithms above.
+
+### What it costs
+
+Fusion does not make the work smaller. It **converts memory traffic into arithmetic**: fusing `k`
+one-qubit gates on `k` distinct qubits divides traffic by `k` and multiplies dense flops by
+`8*2^k / 14k`. Whether that is a good trade is a property of the machine, not of the circuit, so
+`flopBudget` is a parameter — unbounded minimises traffic, `1.0` forbids any flop inflation.
+
+Measured on an Apple M5 Pro (18 cores, JDK 27), best of seven after three warmups:
+
+```
+# nearest-neighbour brickwork, 22 qubits, 327 gates, 64 MiB state
+width  blocks  flop/byte    flops  traffic  operator       ms   gate/s
+ none     327       0.34     1.0x     1.0x         -    344.2      950
+    3     148       0.76     1.0x     0.5x     1 KiB    260.2     1257
+    6      65       6.49     3.8x     0.2x    64 KiB    544.5      601
+
+# Grover, 14 qubits, 4 iterations, 254 gates
+ none     254       0.32     1.0x     1.0x         -     22.9    11081
+    4      63       2.08     1.8x     0.3x     4 KiB      8.2    31012
+```
+
+So fusion is worth about 1.3x on the brickwork circuit and 2.8x on Grover, both at modest widths,
+and becomes a loss past width 5 where the added arithmetic outweighs the traffic saved. Reproduce
+with:
+
+```bash
+sbt 'Test/runMain scotty.simulator.fusion.FusionBench 22'
+sbt 'Test/runMain scotty.simulator.fusion.FusionBench grover 14 4'
+```
+
+Everything that touches amplitudes is in `FusedKernel`, which depends on neither the simulator nor
+`scala.collection.parallel`, so the fusion path can be linked by Scala.js. `FusedRunner` is the JVM
+scheduling layer on top of it. The state-vector simulator itself remains JVM-only.
+
+The pass was written to answer a hardware question — whether state-vector simulation can be made
+tensor-engine-shaped — which is written up at
+[oluies.github.io/brokkr](https://oluies.github.io/brokkr/).
+
 ## Notes on the Scala 3 port
 
 The gate, circuit, register and reader API is unchanged in shape. Four things did change:
