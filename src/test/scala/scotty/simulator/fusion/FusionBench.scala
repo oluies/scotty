@@ -13,6 +13,7 @@ import scotty.simulator.QuantumSimulator
   */
 object FusionBench:
   val Qubits: Int = 22
+  val GroverQubits: Int = 14
   val Layers: Int = 6
   val Warmups: Int = 2
   val Runs: Int = 3
@@ -20,18 +21,22 @@ object FusionBench:
   def main(args: Array[String]): Unit =
     val workload = args.headOption.filterNot(_.forall(_.isDigit)).getOrElse("brickwork")
     val numbers = args.filter(_.forall(_.isDigit)).map(_.toInt)
-    val qubits = numbers.headOption.getOrElse(Qubits)
+    val qubits = numbers.headOption.getOrElse(if workload == "grover" then GroverQubits else Qubits)
+    val groverQubits = qubits
     val circuit = workload match
       // Grover at its optimal iteration count is thousands of layers at this width, so the
       // iteration count is capped: the point is the gate mix and the all-qubit layers, not the
       // search. Pass it explicitly as the second number.
-      case "grover" => Grover.circuit(qubits, Seq((1 << qubits) - 2), numbers.lift(1).getOrElse(4))
+      // Grover's oracle spans every qubit, so its blocks stay native above the fusion budget; the
+      // default width is its own because 22 qubits of Grover at the optimal iteration count is
+      // tens of thousands of gates.
+      case "grover" => Grover.circuit(groverQubits, Seq((1 << groverQubits) - 2), numbers.lift(1).getOrElse(4))
       case _        => brickwork(qubits, Layers)
 
     println(s"workload: $workload")
     val simulator = QuantumSimulator()
     val gates = circuit.gates.length
-    val elementary = circuit.gates.flatMap(FusedBlock.lower).length
+    val elementary = circuit.gates.flatMap(FusedBlock.lower(_)).length
 
     println(s"$qubits qubits, $gates gates, $elementary lowered blocks")
     println(s"state: ${(Math.pow(2, qubits.toDouble) * 16 / (1024 * 1024)).round} MiB in double precision")
@@ -41,7 +46,9 @@ object FusionBench:
         f"${"operator"}%9s ${"ms"}%8s ${"gate/s"}%8s"
     )
 
-    val unfused = FusionCost.of(FusedCircuit(qubits, GateFusion.fuseBlocks(circuit.gates.flatMap(FusedBlock.lower), 1)))
+    val unfused = FusionCost.of(
+      FusedCircuit(qubits, GateFusion.fuseOps(circuit.gates.flatMap(FusedBlock.lower(_, 1)), qubits, 1))
+    )
     val baseline = time(Warmups, Runs)(simulator.run(circuit))
 
     println(
@@ -52,7 +59,7 @@ object FusionBench:
     (2 to 6).foreach: width =>
       val fused = GateFusion.fuse(circuit, width)
       val cost = fused.cost
-      val operator = fused.blocks.map(b => b.dimension.toLong * b.dimension * 16).max
+      val operator = fused.blocks.map(b => b.operator.entries.toLong * 16).maxOption.getOrElse(0L)
       val ms = time(Warmups, Runs)(FusedRunner.run(circuit, width))
 
       println(
@@ -60,6 +67,10 @@ object FusionBench:
           f"${cost.flops / unfused.flops}%7.1fx ${cost.bytes / unfused.bytes}%7.1fx " +
           f"${humanBytes(operator)}%9s $ms%8.1f ${gates * 1000 / ms}%8.0f"
       )
+
+    println()
+    println(s"form mix at width 6: ${GateFusion.fuse(circuit, 6).forms}, " +
+      s"${GateFusion.fuse(circuit, 6).natives.length} native")
 
     println()
     println("flops/traffic are relative to the unfused lowering; operator is the largest fused")

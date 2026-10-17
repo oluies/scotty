@@ -2,28 +2,96 @@ package scotty.simulator.fusion
 
 import scotty.quantum.QuantumContext.Vector
 
-/** The fused-block inner loop, with no dependency on parallel collections.
+/** The fused-block inner loops, with no dependency on parallel collections or on the simulator.
   *
   * This is deliberately a separate object. [[FusedRunner]] uses `scala.collection.parallel`, which
   * is JVM-only, so anything that imports it cannot be linked by Scala.js — and the browser is a real
-  * target here, since `pctc` already ships a Scala.js build. Everything that actually touches
-  * amplitudes lives in this file so that a cross-built or single-threaded caller can use the fusion
-  * path without pulling parallel collections in.
+  * target here, since `pctc` already ships a Scala.js build. Everything that touches amplitudes
+  * lives in this file, and lowering goes through `scotty.quantum.gate.Decompositions` rather than
+  * the simulator, so the whole fusion path is linkable.
   *
-  * It is also the hardware specification, in the sense that matters: compute a slice's base address,
-  * gather `2^k` amplitudes at fixed strides, multiply by the operator, scatter back. An RTL
-  * implementation is this loop with the address arithmetic in a generator and the matvec in a MAC
-  * array.
+  * The three loops are also the hardware specification, in the sense that matters, and they are
+  * three different machines:
+  *
+  *   - [[applyDiagonal]] is a single streaming pass. No gather, no scatter, no shuffle network: one
+  *     complex multiply per amplitude against a `2^k` phase table.
+  *   - [[applyMonomial]] gathers `2^k` amplitudes, permutes and scales them, and scatters them back.
+  *     It needs the shuffle network but no multiplier array.
+  *   - [[applyDense]] is the only one that needs a MAC array.
   */
 object FusedKernel:
-  /** Applies one block to every slice in `[firstSlice, lastSlice)`.
+  /** Scales each amplitude in `[firstIndex, lastIndex)` by the phase its supported bits select.
+    *
+    * The cheapest form by a wide margin, and the one a dense-only engine would throw away: a
+    * multi-controlled `Z` over the whole register costs one complex multiply per amplitude here.
+    */
+  def applyDiagonal(
+      state: Vector,
+      values: Array[Double],
+      qubits: Array[Int],
+      firstIndex: Int,
+      lastIndex: Int
+  ): Unit =
+    var index = firstIndex
+
+    while index < lastIndex do
+      val local = Bits.gather(index, qubits)
+      val dRe = values(2 * local)
+      val dIm = values(2 * local + 1)
+      val i = 2 * index
+      val re = state(i)
+      val im = state(i + 1)
+
+      state(i) = dRe * re - dIm * im
+      state(i + 1) = dRe * im + dIm * re
+      index += 1
+
+  /** Permutes and scales each slice's `2^k` amplitudes. */
+  def applyMonomial(
+      state: Vector,
+      rows: Array[Int],
+      values: Array[Double],
+      strides: Array[Int],
+      qubits: Array[Int],
+      dimension: Int,
+      firstSlice: Int,
+      lastSlice: Int,
+      scratchRe: Array[Double],
+      scratchIm: Array[Double]
+  ): Unit =
+    var slice = firstSlice
+
+    while slice < lastSlice do
+      val base = baseOf(slice, qubits)
+
+      var col = 0
+      while col < dimension do
+        val i = 2 * (base + strides(col))
+
+        scratchRe(col) = state(i)
+        scratchIm(col) = state(i + 1)
+        col += 1
+
+      col = 0
+      while col < dimension do
+        val vRe = values(2 * col)
+        val vIm = values(2 * col + 1)
+        val i = 2 * (base + strides(rows(col)))
+
+        state(i) = vRe * scratchRe(col) - vIm * scratchIm(col)
+        state(i + 1) = vRe * scratchIm(col) + vIm * scratchRe(col)
+        col += 1
+
+      slice += 1
+
+  /** Applies a dense operator to every slice in `[firstSlice, lastSlice)`.
     *
     * `scratchRe` and `scratchIm` are the gather buffers, `2^k` wide, supplied by the caller so they
     * can be allocated once per thread or per chunk. Allocating them per slice costs more than the
     * arithmetic fusion saves — at width 4 on 22 qubits there are a quarter of a million slices per
     * block.
     */
-  def applySlices(
+  def applyDense(
       state: Vector,
       operator: Array[Double],
       strides: Array[Int],
@@ -71,21 +139,21 @@ object FusedKernel:
 
       slice += 1
 
-  /** The operator flattened into an interleaved array, so the inner loop walks it with one running
-    * index instead of recomputing `2 * (row * cols + col)` per entry.
+  /** A dense operator flattened into an interleaved array, so the inner loop walks it with one
+    * running index instead of recomputing `2 * (row * cols + col)` per entry.
     */
-  def flatten(block: FusedBlock): Array[Double] =
-    val d = block.dimension
+  def flatten(operator: DenseOperator): Array[Double] =
+    val d = operator.dimension
     val flat = new Array[Double](2 * d * d)
 
     var row = 0
     while row < d do
       var col = 0
       while col < d do
-        val i = 2 * (row * d + col)
+        val entry = 2 * (row * d + col)
 
-        flat(i) = block.operator.realAt(row, col)
-        flat(i + 1) = block.operator.imagAt(row, col)
+        flat(entry) = operator.matrix.realAt(row, col)
+        flat(entry + 1) = operator.matrix.imagAt(row, col)
         col += 1
       row += 1
 
@@ -97,23 +165,43 @@ object FusedKernel:
   def stridesOf(block: FusedBlock): Array[Int] =
     val qubits = block.qubits.toArray
 
-    Array.tabulate(block.dimension)(offsetOf(_, qubits))
+    Array.tabulate(block.dimension)(Bits.scatter(_, qubits))
 
-  /** Applies a block to a whole state, single-threaded. The Scala.js entry point. */
+  /** Applies one block to a whole state, single-threaded. The Scala.js entry point. */
   def applyBlock(state: Vector, qubitCount: Int, block: FusedBlock): Unit =
+    val qubits = block.qubits.toArray
     val d = block.dimension
 
-    applySlices(
-      state,
-      flatten(block),
-      stridesOf(block),
-      block.qubits.toArray,
-      d,
-      0,
-      1 << (qubitCount - block.width),
-      new Array[Double](d),
-      new Array[Double](d)
-    )
+    block.operator match
+      case diagonal: DiagonalOperator =>
+        applyDiagonal(state, diagonal.values, qubits, 0, state.length / 2)
+
+      case monomial: MonomialOperator =>
+        applyMonomial(
+          state,
+          monomial.rows,
+          monomial.values,
+          stridesOf(block),
+          qubits,
+          d,
+          0,
+          1 << (qubitCount - block.width),
+          new Array[Double](d),
+          new Array[Double](d)
+        )
+
+      case dense: DenseOperator =>
+        applyDense(
+          state,
+          flatten(dense),
+          stridesOf(block),
+          qubits,
+          d,
+          0,
+          1 << (qubitCount - block.width),
+          new Array[Double](d),
+          new Array[Double](d)
+        )
 
   /** The base amplitude index of a slice: `slice` with a zero bit inserted at each supported qubit.
     *
@@ -134,12 +222,4 @@ object FusedKernel:
     index
 
   /** A local index spread back out over the supported qubits' bit positions. */
-  def offsetOf(local: Int, qubits: Array[Int]): Int =
-    var offset = 0
-    var j = 0
-
-    while j < qubits.length do
-      offset |= ((local >> j) & 1) << qubits(j)
-      j += 1
-
-    offset
+  def offsetOf(local: Int, qubits: Array[Int]): Int = Bits.scatter(local, qubits)

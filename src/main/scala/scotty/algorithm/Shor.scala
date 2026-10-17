@@ -129,6 +129,10 @@ object Shor:
 
   /** The period of `a` modulo `n`, computed classically. The answer the circuit has to reproduce. */
   def classicalPeriod(a: Int, n: Int = Modulus): Int =
+    // Without coprimality there is no period: the powers of a fall into a cycle that never reaches
+    // 1, and the loop below would not terminate.
+    require(gcd(a, n) == 1, s"$a and $n are not coprime, so $a has no multiplicative order mod $n.")
+
     var r = 1
     var power = a % n
 
@@ -138,14 +142,19 @@ object Shor:
 
     r
 
+  /** Square-and-multiply, with `Long` intermediates: `result * base` overflows `Int` once the
+    * modulus passes about 46341, and the linear version is needlessly slow for large exponents.
+    */
   def modPow(base: Int, exponent: Int, modulus: Int): Int =
-    var result = 1
-    var i = 0
+    var result = 1L
+    var factor = base.toLong % modulus
+    var remaining = exponent
 
-    while i < exponent do
-      result = result * base % modulus
-      i += 1
+    while remaining > 0 do
+      if (remaining & 1) == 1 then result = result * factor % modulus
+      factor = factor * factor % modulus
+      remaining >>= 1
 
-    result
+    result.toInt
 
   def gcd(a: Int, b: Int): Int = if b == 0 then Math.abs(a) else gcd(b, a % b)

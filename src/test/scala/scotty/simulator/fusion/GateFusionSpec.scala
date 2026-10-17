@@ -144,20 +144,84 @@ class GateFusionSpec extends AnyFlatSpec with TestHelpers {
     forEveryWidth(Circuit(H(0), CNOT(0, 1)))
   }
 
-  "The dense-lowering cap" should "refuse a controlled gate wider than it can represent" in {
-    // Grover's oracle and diffusion both contain a controlled Z over every qubit. The unfused
-    // simulator applies those in one pass, because they are diagonal; the greedy dense pass would
-    // have to build a 2^k x 2^k operator, which at 12 qubits is already 128 GiB. It has to say so
-    // rather than try.
+  "The form lattice" should "classify the one-qubit gates by structure" in {
+    assert(FusedBlock.ofTarget(I(0)).form == BlockForm.Diagonal)
+    assert(FusedBlock.ofTarget(Z(0)).form == BlockForm.Diagonal)
+    assert(FusedBlock.ofTarget(S(0)).form == BlockForm.Diagonal)
+    assert(FusedBlock.ofTarget(T(0)).form == BlockForm.Diagonal)
+    assert(FusedBlock.ofTarget(RZ(0.3, 0)).form == BlockForm.Diagonal)
+    assert(FusedBlock.ofTarget(PHASE(0.3, 0)).form == BlockForm.Diagonal)
+    assert(FusedBlock.ofTarget(X(0)).form == BlockForm.Monomial)
+    assert(FusedBlock.ofTarget(Y(0)).form == BlockForm.Monomial)
+    assert(FusedBlock.ofTarget(H(0)).form == BlockForm.Dense)
+    assert(FusedBlock.ofTarget(RX(0.3, 0)).form == BlockForm.Dense)
+    assert(FusedBlock.ofTarget(RY(0.3, 0)).form == BlockForm.Dense)
+    // Classified from the matrix, not from a table of names, so a Dagger comes out right for free.
+    assert(FusedBlock.ofTarget(Dagger(T(0))).form == BlockForm.Diagonal)
+    assert(FusedBlock.ofTarget(Dagger(H(0))).form == BlockForm.Dense)
+  }
+
+  it should "keep a controlled gate in its target's form" in {
+    assert(FusedBlock.ofControl(CZ(0, 1)).form == BlockForm.Diagonal)
+    assert(FusedBlock.ofControl(CPHASE(0.3, 0, 1)).form == BlockForm.Diagonal)
+    assert(FusedBlock.ofControl(CNOT(0, 1)).form == BlockForm.Monomial)
+    assert(FusedBlock.ofControl(CCNOT(0, 1, 2)).form == BlockForm.Monomial)
+    assert(FusedBlock.ofControl(Controlled(0, H(1))).form == BlockForm.Dense)
+  }
+
+  it should "lower a multi-controlled Z to 2^k entries rather than 4^k" in {
+    // The gate at the heart of Grover's oracle. Dense it would be 65536 entries; diagonal it is 256.
+    val block = FusedBlock.lower(Grover.controlledZ((0 until 8).toIndexedSeq), maxWidth = 8).head
+
+    block match
+      case b: FusedBlock =>
+        assert(b.form == BlockForm.Diagonal)
+        assert(b.operator.entries == 256)
+      case other => fail(s"expected a fused block, got $other")
+  }
+
+  it should "promote only as far as it has to when composing" in {
+    val diagonal = FusedBlock.ofTarget(Z(0))
+    val monomial = FusedBlock.ofTarget(X(0))
+    val dense = FusedBlock.ofTarget(H(0))
+
+    assert(diagonal.after(diagonal).form == BlockForm.Diagonal)
+    assert(monomial.after(diagonal).form == BlockForm.Monomial)
+    assert(diagonal.after(monomial).form == BlockForm.Monomial)
+    assert(monomial.after(monomial).form == BlockForm.Diagonal, "X after X is the identity")
+    assert(dense.after(diagonal).form == BlockForm.Dense)
+    assert(dense.after(dense).form == BlockForm.Diagonal, "H after H is the identity")
+  }
+
+  it should "expand a cheap form without densifying it" in {
+    val widened = FusedBlock.ofTarget(Z(0)).expandTo(IndexedSeq(0, 1, 2, 3))
+
+    assert(widened.form == BlockForm.Diagonal)
+    assert(widened.operator.entries == 16)
+  }
+
+  "The native escape" should "leave a gate wider than the budget for the simulator" in {
+    // Grover's oracle and diffusion both contain a controlled Z over every qubit. The pass declines
+    // to lower it at all rather than building any operator for it, cheap or otherwise.
+    val fused = GateFusion.fuse(Grover.circuit(20, Seq(7), 2), maxWidth = 5)
+
+    assert(fused.natives.nonEmpty, "the all-qubit controlled Z should have been left native")
+    assert(fused.blocks.forall(_.width <= 5))
+    assert(
+      fused.cost.operatorBytes < 1024 * 1024,
+      f"operators total ${fused.cost.operatorBytes / 1024}%.0f KiB, which should be kilobytes"
+    )
+  }
+
+  it should "still refuse a wide controlled dense gate" in {
+    // A controlled H has no cheap form, so the dense cap is the only thing standing between the pass
+    // and a 268 MiB operator at 12 qubits. It has to say so rather than try.
+    val gate = (0 until 11).foldRight[Gate](H(11))((control, target) => Controlled(control, target))
     val thrown = intercept[IllegalArgumentException] {
-      GateFusion.fuse(Grover.circuit(12, 7), maxWidth = 5)
+      FusedBlock.ofControl(gate.asInstanceOf[ControlGate])
     }
 
     assert(thrown.getMessage.contains("dense-lowering cap"))
-  }
-
-  it should "handle Grover up to the cap" in {
-    assert(GateFusion.fuse(Grover.circuit(10, 7), maxWidth = 5).blocks.nonEmpty)
   }
 
   "The fusion pass" should "collapse a run of gates on the same qubits into one block" in {
@@ -176,7 +240,7 @@ class GateFusionSpec extends AnyFlatSpec with TestHelpers {
 
   it should "reduce the block count on a circuit with locality" in {
     val circuit = randomCircuit(qubitCount = 6, gateCount = 40, new Random(7L))
-    val elementary = circuit.gates.flatMap(FusedBlock.lower).length
+    val elementary = circuit.gates.flatMap(FusedBlock.lower(_)).length
 
     assert(GateFusion.fuse(circuit, maxWidth = 4).blocks.length < elementary)
   }
