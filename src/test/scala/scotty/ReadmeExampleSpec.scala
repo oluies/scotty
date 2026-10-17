@@ -1,15 +1,17 @@
 package scotty
 
 import org.scalatest.flatspec.AnyFlatSpec
-import scotty.quantum.gate.StandardGate.{CNOT, H, Z}
+import scotty.quantum.gate.StandardGate.{CNOT, H, RZ, Z}
 import scotty.quantum.gate.Controlled
 import scotty.quantum.math.Complex
 import scotty.quantum.math.MathUtils.~=
+import scotty.algorithm.{Grover, Qft, Shor}
 import scotty.quantum.{Circuit, Qubit, QubitProbabilityReader, QubitRegister}
 import scotty.simulator.QuantumSimulator
+import scotty.simulator.fusion.{BlockForm, FusedRunner, GateFusion}
 
-/** The teleportation example from README.md, kept as a test so the documented public API cannot
-  * drift out of compiling.
+/** The examples from README.md, kept as tests so the documented public API cannot drift out of
+  * compiling, and so the figures quoted alongside them cannot drift out of being true.
   */
 class ReadmeExampleSpec extends AnyFlatSpec:
   "the README teleportation example" should "move the message amplitude to the third qubit" in {
@@ -33,4 +35,43 @@ class ReadmeExampleSpec extends AnyFlatSpec:
         .read("there")
         .fold(false)(_.probabilityOfOne ~= msg.probabilityOfOne)
     )
+  }
+
+  "the README algorithm examples" should "do what the README says they do" in {
+    Qft.gates((0 until 4).toIndexedSeq)
+    Qft.inverseGates((0 until 4).toIndexedSeq)
+
+    given sim: QuantumSimulator = QuantumSimulator()
+
+    val circuit = Grover.circuit(qubitCount = 5, marked = 21)
+
+    assert(Grover.iterations(5) == 4)
+    assert(sim.runAndMeasure(circuit).toBinary == "10101")
+
+    Shor.periodCircuit(a = 7, countingQubits = 4)
+
+    assert(Shor.period(a = 7, y = 4, q = 16) == Some(4))
+    assert(Shor.factor(a = 7, y = 4, q = 16) == Some((3, 5)))
+  }
+
+  "the README fusion example" should "report the form mix the README quotes" in {
+    // The brickwork circuit the benchmark table is measured on, at the width the README prints the
+    // mix for. If the pass stops producing that mix, the README is wrong and this fails.
+    val qubitCount = 22
+    val ops = (0 until 6).flatMap: layer =>
+      (0 until qubitCount).map(H(_)) ++
+        (0 until qubitCount).map(q => RZ(0.1 + 0.01 * q, q)) ++
+        (layer % 2 until qubitCount - 1 by 2).map(q => CNOT(q, q + 1))
+
+    val circuit = Circuit(Circuit.generateRegister(qubitCount), ops*)
+    val fused = GateFusion.fuse(circuit, maxWidth = 6)
+
+    assert(fused.forms == Map(BlockForm.Dense -> 26, BlockForm.Diagonal -> 18, BlockForm.Monomial -> 21))
+    assert(fused.blocks.length == 65)
+    assert(Math.abs(fused.cost.arithmeticIntensity - 6.49) < 0.01)
+
+    val atFour = GateFusion.fuse(circuit, maxWidth = 4)
+
+    assert(atFour.blocks.length == 98)
+    assert(Math.abs(atFour.cost.arithmeticIntensity - 1.57) < 0.01)
   }

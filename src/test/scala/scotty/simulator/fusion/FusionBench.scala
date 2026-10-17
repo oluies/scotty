@@ -15,8 +15,8 @@ object FusionBench:
   val Qubits: Int = 22
   val GroverQubits: Int = 14
   val Layers: Int = 6
-  val Warmups: Int = 2
-  val Runs: Int = 3
+  val Warmups: Int = 3
+  val Runs: Int = 7
 
   def main(args: Array[String]): Unit =
     val workload = args.headOption.filterNot(_.forall(_.isDigit)).getOrElse("brickwork")
