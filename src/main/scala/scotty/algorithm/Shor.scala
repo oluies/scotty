@@ -133,11 +133,14 @@ object Shor:
     // 1, and the loop below would not terminate.
     require(gcd(a, n) == 1, s"$a and $n are not coprime, so $a has no multiplicative order mod $n.")
 
+    // Long for the same reason modPow uses it: the product overflows Int once the modulus passes
+    // about 46341, and this is a public helper that does not default its base.
+    val base = a.toLong % n
+    var power = base
     var r = 1
-    var power = a % n
 
     while power != 1 do
-      power = power * a % n
+      power = power * base % n
       r += 1
 
     r

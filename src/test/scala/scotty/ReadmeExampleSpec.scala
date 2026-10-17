@@ -3,10 +3,10 @@ package scotty
 import org.scalatest.flatspec.AnyFlatSpec
 import scotty.quantum.gate.StandardGate.{CNOT, H, RZ, Z}
 import scotty.quantum.gate.Controlled
-import scotty.quantum.math.Complex
+import scotty.quantum.math.{Complex, MathUtils}
 import scotty.quantum.math.MathUtils.~=
 import scotty.algorithm.{Grover, Qft, Shor}
-import scotty.quantum.{Circuit, Qubit, QubitProbabilityReader, QubitRegister}
+import scotty.quantum.{Circuit, Qubit, QubitProbabilityReader, QubitRegister, Superposition}
 import scotty.simulator.QuantumSimulator
 import scotty.simulator.fusion.{BlockForm, FusedRunner, GateFusion}
 
@@ -46,7 +46,15 @@ class ReadmeExampleSpec extends AnyFlatSpec:
     val circuit = Grover.circuit(qubitCount = 5, marked = 21)
 
     assert(Grover.iterations(5) == 4)
-    assert(sim.runAndMeasure(circuit).toBinary == "10101")
+
+    // The README quotes the probability rather than a sample, and so does this: asserting one
+    // measurement outcome would fail about one run in 1200 with no defect behind it.
+    val state = sim.run(circuit) match
+      case s: Superposition => s.state
+      case other            => fail(s"expected a superposition, got $other")
+
+    assert(state(2 * 21) * state(2 * 21) + state(2 * 21 + 1) * state(2 * 21 + 1) > 0.999)
+    assert(MathUtils.toPaddedBinaryString(21, 5) == "10101")
 
     Shor.periodCircuit(a = 7, countingQubits = 4)
 

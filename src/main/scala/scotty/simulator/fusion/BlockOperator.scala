@@ -48,9 +48,6 @@ object Bits:
 enum BlockForm:
   case Diagonal, Monomial, Dense
 
-  /** The coarser of two forms, which is the form of their product. */
-  def join(that: BlockForm): BlockForm = if ordinal >= that.ordinal then this else that
-
 /** A `2^k x 2^k` operator, stored in the tightest form it admits. */
 sealed trait BlockOperator:
   def width: Int
@@ -257,11 +254,12 @@ final case class DenseOperator(width: Int, matrix: ComplexMatrix) extends BlockO
 object BlockOperator:
   /** Entries below this are treated as zero when deciding a matrix's form.
     *
-    * Classification only ever runs on an elementary gate's own matrix, where the zeros are exact —
-    * composed operators get their form from the composition rules instead. The tolerance is there
-    * for the gates whose zeros are computed rather than written, such as `RX(Math.PI)`, whose
-    * cosine is 6e-17 rather than 0. Dropping a term that small from a matrix whose other entries are
-    * 1 is below the precision of the amplitudes it multiplies.
+    * This runs on an elementary gate's own matrix, where the zeros are exact, and again on every
+    * dense product formed by [[BlockOperator.after]], where they are not. The tolerance covers both:
+    * the gates whose zeros are computed rather than written, such as `RX(Math.PI)`, whose cosine is
+    * 6e-17 rather than 0; and the cancellations that make a dense product cheap, such as H after H,
+    * whose off-diagonal residue is around 1e-16. Dropping a term that small from a matrix whose
+    * other entries are 1 is below the precision of the amplitudes it multiplies.
     */
   val Tolerance: Double = 1e-12
 
