@@ -56,7 +56,8 @@ sbt publishLocal publishM2    # install into ~/.ivy2/local and ~/.m2/repository
 ./mill scotty.publishM2Local
 ```
 
-`publishLocal`/`publishM2` is what downstream projects (such as the P-CTC simulation in `../pctc`) depend on.
+`publishLocal`/`publishM2` is what downstream projects depend on — see
+[Downstream projects](#downstream-projects).
 
 ## Density matrices and quantum channels
 
@@ -206,6 +207,12 @@ values of `Channel`, which is what the P-CTC construction of
 
 `Channel.bellBasis` is the two-qubit Bell basis as four orthonormal columns, ordered
 `Phi+, Phi-, Psi+, Psi-`.
+
+`Channel.apply` has a hardware implementation checked against this one: `ChannelEngine` in
+[brokkr](https://oluies.github.io/brokkr/) computes `rho -> sum_k K_k rho K_k^dagger` in Chisel, and
+is verified against Scotty over four channels and 24 cases — including `erasure`, whose rectangular
+`3 x 2` operators are why the engine carries separate input and output dimensions. Trace preservation
+and Hermiticity are asserted there too, since they hold whatever the reference says.
 
 ### `Measurement`
 
@@ -359,7 +366,12 @@ scheduling layer on top of it. The state-vector simulator itself remains JVM-onl
 
 The pass was written to answer a hardware question — whether state-vector simulation can be made
 tensor-engine-shaped — which is written up at
-[oluies.github.io/brokkr](https://oluies.github.io/brokkr/).
+[oluies.github.io/brokkr](https://oluies.github.io/brokkr/). The short answer is that the shape
+transfers but the economics do not: fusion is an exchange rate, and a dense-only pass trades badly
+enough to lose to the specialised 2x2 kernel at every width. The form lattice above is what reverses
+that. The assessment then ends somewhere else again — a density matrix reaches 683 flop/byte at ten
+qubits where the best fused state vector reaches 15.9, so the engine it actually builds implements
+`Channel.apply` rather than `applyGate`.
 
 ## Notes on the Scala 3 port
 
@@ -388,6 +400,29 @@ Deprecated or removed Scala 2 constructs replaced along the way: `implicit class
 
 The port first landed on Scala 3.3 LTS and moved to 3.9 LTS when that line
 [superseded it](https://www.scala-lang.org/news/3.9/) in September 2026.
+
+## Downstream projects
+
+Two projects are built on this fork, and both are the reason parts of it exist.
+
+- **[pctc](https://github.com/oluies/pctc)** — [run it in the browser](https://oluies.github.io/pctc/)
+  — a numerical model of the retrocausal-capacity framework of
+  [arXiv:2509.08965](https://arxiv.org/abs/2509.08965), built on the density-matrix layer above. It
+  is what that layer was written for, and each piece traces to something it needs: `Channel` admits
+  trace-decreasing maps and rectangular Kraus operators because the construction is stated for
+  arbitrary completely positive maps; `Measurement` returns the unnormalised post-measurement
+  operator alongside its probability because post-selection renormalises by exactly that probability;
+  `Cholesky` decides `a - factor * b > 0` without materialising the difference, which is the inner
+  loop of an operator-ordering bisection; and `NullSpace` turns Deutsch's self-consistency condition
+  `rho = M[rho]` into the kernel of `M - I`.
+- **[brokkr](https://oluies.github.io/brokkr/)** —
+  [oluies/brokkr](https://github.com/oluies/brokkr) — a design assessment of whether a CUTE-style
+  Chisel tensor engine can accelerate quantum simulation, with the RTL to go with it. The gate-fusion
+  pass above was written to answer its first question; its conclusion is that the density-matrix layer
+  is the better target, so its engine is a hardware `Channel.apply` verified against this
+  implementation.
+
+Scotty is the golden model for both. Neither depends on the other.
 
 ## Getting Started
 
