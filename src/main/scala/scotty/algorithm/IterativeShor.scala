@@ -55,7 +55,9 @@ object IterativeShor:
 
     private def amplitudes: Int = 1 << (bits + 1)
 
-    /** `|+>` on the counting qubit and `y = 1`, the multiplicative identity. */
+    /** `y = 1`, the multiplicative identity, with the counting qubit at `|0>`; the first
+      * `collapseAndReset(state, 0, 1d)` puts it in `|+>`.
+      */
     def initial: Array[Double] =
       val state = new Array[Double](2 * amplitudes)
 
@@ -76,7 +78,9 @@ object IterativeShor:
         state(to + 1) = scratch(from + 1)
         y += 1
 
-    /** One step after the multiplication: the phase correction, the Hadamard, the measurement. */
+    /** One step after the multiplication: the phase correction, then the Hadamard. Measuring is
+      * [[probabilityOfOne]] and [[collapseAndReset]].
+      */
     def phaseAndHadamard(state: Array[Double], phase: Double): Unit =
       val (cos, sin) = (Math.cos(phase), Math.sin(phase))
       val half = 1 / Math.sqrt(2)
