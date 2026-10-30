@@ -628,8 +628,9 @@ of this fork, which their continuous integration builds from the tag, rather tha
 ## Getting Started
 
 Add the dependency as [Releases](#releases) describes, or build a tag from source with
-`sbt publishLocal`. The examples in this README are the quickest tour of the fork, and
-`ReadmeExampleSpec` runs every one of them.
+`sbt publishLocal`. The examples in this README are the quickest tour of the fork.
+`ReadmeExampleSpec` runs the teleportation, algorithm and fusion ones; the density-matrix snippets
+are illustrations, with inputs such as `rho` left to the reader.
 
 The original project's [documentation](https://www.entangled.xyz/scotty/) covers the state-vector
 API this fork started from; it predates the Scala 3 port and everything listed under
