@@ -276,12 +276,17 @@ Shor.factor(a = 7, y = 4, q = 16)                           // Some((3, 5))
 
 // Shor's algorithm for any odd modulus: Beauregard's 2n + 3 qubits, one counting qubit reused.
 SemiclassicalShor.quantumFactor(a = 2, n = 21, new Random(21))  // Some((3, 7)), from some runs
+
+// The same on L + 1 qubits, the multiplication a permutation of basis states (Willsch et al.).
+IterativeShor.quantumFactor(a = 2, n = 21, new Random(21))      // Some((3, 7)), from some runs
 ```
 
 `Shor` is restricted to 15 on purpose; `SemiclassicalShor` is not. A general modular exponentiation for an `m`-bit modulus needs
 on the order of `m^3` gates and `2m + 3` qubits in all, with a single counting qubit measured and
-reused, which a state-vector simulator on one machine outgrows within a few bits; a supercomputer gets much further, to a 39-bit
-number in [Willsch et al.](#shor-beyond-15-and-without-a-quantum-computer). Compiling the arithmetic
+reused, which a state-vector simulator on one machine outgrows within a few bits. Applying the
+multiplication as a permutation instead, as `IterativeShor` does, takes it to `L + 1` qubits and to
+20-bit moduli here; a supercomputer gets much further that way, to a 39-bit number in
+[Willsch et al.](#shor-beyond-15-and-without-a-quantum-computer). Compiling the arithmetic
 for one modulus, as `Shor` does, keeps the circuit small, at the cost that
 [Smolin, Smith and Vargo](#shor-beyond-15-and-without-a-quantum-computer) point out: what such a
 circuit demonstrates is the period it finds, not the size of the number. Modulo 15 that compilation is pleasant: multiplication by 2 is a cyclic rotation of the four
@@ -311,6 +316,27 @@ is a rotation optionally followed by a negation — `CSWAP`s and `CNOT`s, nothin
   fusion pass at its default width of five turns into about 255 operations, from about 140 ms to
   about 25 ms, and `PeriodFinder` keeps each fused multiplier for the next shot.
 
+### Shor on `L + 1` qubits
+
+`IterativeShor` is the "iterative Shor algorithm" of Willsch et al. (Section II and Fig. 2 of the
+paper [below](#shor-beyond-15-and-without-a-quantum-computer)). It keeps `SemiclassicalShor`'s single
+reused counting qubit but replaces Beauregard's arithmetic with the paper's Eq. (6): the controlled
+multiplication `|1>|y> -> |1>|a y mod N>` for `y < N`, every other basis state unchanged. That is a
+permutation, since `a` is invertible modulo `N`, so the work register is just the `L` bits of `y`,
+with no `b` register and no ancilla. The constants `a^(2^k) mod N` come from repeated squaring, which
+needs no knowledge of the period.
+
+| | `SemiclassicalShor` | `IterativeShor` |
+|---|---|---|
+| qubits for an `L`-bit modulus | `2L + 3` | `L + 1` |
+| controlled multiplication | about 1350 gates at 21, fused | one pass over the state |
+| one shot at 21 | about 300 ms | about 0.03 ms |
+| largest modulus in the tests | 35 | 1 022 117 = 1009 × 1013, on 21 qubits |
+
+The trade is the one the paper makes: the oracle is the arithmetic's effect, not a decomposition
+into gates, so `SemiclassicalShor` remains the circuit and `IterativeShor` the scale. It is plain
+array code with nothing from the simulator, so it also compiles for JavaScript.
+
 ### Shor beyond 15, and without a quantum computer
 
 What Shor's algorithm is for, how far it has been simulated classically, and the attempts to factor
@@ -334,7 +360,7 @@ page, and details a page did not confirm are left out; the remarks connecting th
   Quantum Factoring Algorithm*, Mathematics **11**, 4222 (2023),
   [arXiv:2308.05047](https://arxiv.org/abs/2308.05047). The largest semiprime factored by running Shor's
   algorithm on a GPU-based supercomputer, "without exploiting prior knowledge of the solution", is
-  549 755 813 701 = 712 321 × 771 781.
+  549 755 813 701 = 712 321 × 771 781. `IterativeShor` follows its Section II.
 - O. Regev, *An Efficient Quantum Factoring Algorithm* (2023),
   [arXiv:2308.06572](https://arxiv.org/abs/2308.06572). `n`-bit integers from `√n + 4` independent runs
   of a circuit with `Õ(n^{3/2})` gates and classical post-processing; it rests on a number-theoretic heuristic, and the abstract says it is "not clear" yet whether it helps
@@ -363,7 +389,7 @@ page, and details a page did not confirm are left out; the remarks connecting th
 
 ### Tests
 
-Thirty cases across five specs. They are written to check the **answer**, not agreement with
+Thirty-eight cases across six specs. They are written to check the **answer**, not agreement with
 another implementation, which is the property that makes them useful as verification vectors: a
 diff against a second simulator only tells you two things agree, whereas a search that stops
 finding its target tells you something is wrong.
@@ -377,6 +403,7 @@ sbt 'testOnly scotty.algorithm.*'
 | `QftSpec` | The transform matches an **explicitly constructed DFT matrix** on every basis state for 1 to 4 qubits — amplitude by amplitude, real and imaginary parts, to `1e-9`. This is what fixes the qubit-ordering convention; checking a QFT against another circuit would not. Also: the inverse undoes it, and `|0>` maps to a uniform superposition. |
 | `GroverSpec` | Amplitude concentrates on the marked state for 2 to 6 qubits (`> 0.94`, the analytic floor over that range), exactly on two qubits, and better than `0.99` by five. Two marked states are found at once. Every *unmarked* state is left below `0.001` — the check that catches an oracle that amplifies indiscriminately. The iteration count is `floor(pi/4 * sqrt(N/M))`, and the oracle flips the marked amplitude's sign and nothing else. |
 | `BeauregardSpec` | Each block of the arithmetic on **classical inputs**, against ordinary modular arithmetic — the check Alice & Bob describe for their own compiled circuits (IACR ePrint 2026/2665, Appendix B). The Fourier-space adder for every `a` and `b` below 16; the doubly controlled modular adder for every `a, b < 13` and all four control settings, with the ancilla required back at `|0>`; the controlled multiplication for every `x < N` at 15 and 21, control on and off, with `b` and the ancilla left clear. Every output has to be a single basis state to `1e-9`. |
+| `IterativeShorSpec` | The distribution of the measured `y`, found by following both outcomes of every measurement, equals the **analytic phase-estimation distribution** to `1e-12` at every `y` for 15, 21, 33, 35 and 39, computed from its defining sum with no state vector; modulo 21 that puts 90.3% of the weight within one step of a peak, the figure `SemiclassicalShorSpec` uses. Every shot of `SemiclassicalShor` at 21 and 35 lands where this distribution gives real weight, and both recover the classical period. Fixed coprime bases factor every case from 15 to 91 through the period; every odd semiprime below 100 factors; and 1 022 117 = 1009 × 1013 factors on 21 qubits with 40 counting bits. |
 | `SemiclassicalShorSpec` | Modulo 15 every period is a power of two, so **every shot** has to land exactly on a multiple of `q / r`, for all seven bases. Modulo 21 (period 6) 40 seeded shots have to land within one step of a peak at least 75% of the time, against the exact distribution's 90.3%. With fixed coprime bases, so no gcd shortcut can do the work, the period factors 15, 21 and 35. |
 | `ShorSpec` | The compiled multiplier has the period classical arithmetic says it does, **for all six bases** it covers — not just the textbook `a = 7`. The period-finding circuit puts over 99% of its weight on multiples of `2^c / r`, with each peak within `0.01` of `1/r`, and the distribution normalises. Continued fractions recover the period; a zero measurement correctly yields nothing. The classical tail factors 15 into `(3, 5)`, and an end-to-end run takes every outcome the circuit actually produces with real weight and requires that the factorisations they yield are exactly `(3, 5)`. |
 
