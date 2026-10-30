@@ -6,7 +6,7 @@ val parallelCollectionsVersion = "1.2.0"
 // original project, whose last release there is 0.6.0. Releases go to GitHub Packages, from a `v*`
 // tag through .github/workflows/release.yml.
 ThisBuild / organization := "io.github.oluies"
-ThisBuild / version := "0.7.1"
+ThisBuild / version := "0.7.2-SNAPSHOT"
 ThisBuild / scalaVersion := scala3Version
 ThisBuild / versionScheme := Some("early-semver")
 
