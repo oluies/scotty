@@ -283,6 +283,10 @@ IterativeShor.quantumFactor(a = 2, n = 21, new Random(21))      // Some((3, 7)),
 // Shor compiled with the answer: two qubits that "factor" anything (Smolin, Smith and Vargo).
 val a = CompiledShor.base(p = 11, q = 13)                       // 12, built from the factors
 CompiledShor.factors(n = 143, a = a, measured = 1)              // Some((11, 13)), on a coin flip
+
+// What a circuit costs: qubits, gates, depth, and the rotations error correction has to synthesise.
+Resources.of(CompiledShor.circuit).summary
+// "2 qubits, 3 gates (1 on two or more qubits), depth 3, 0 arbitrary-angle rotations"
 ```
 
 `Shor` is restricted to 15 on purpose; `SemiclassicalShor` is not. A general modular exponentiation for an `m`-bit modulus needs
@@ -354,6 +358,36 @@ The catch is that the base is built from `p` and `q`: the compiler already knows
 maximally mixed, so a coin toss reproduces it exactly, which is how the paper "factored" RSA-768.
 Hence their test for any factoring experiment, which applies to `Shor`'s compiled circuit for 15 in
 a milder form: judge it "not by the size of the number factored but by the size of the period found".
+
+### What the circuits cost
+
+`scotty.quantum.Resources` counts any gate sequence or circuit the way resource estimates count it:
+qubits, gates, depth with each gate placed as early as its qubits allow, the mix by arity and by
+name, and the **arbitrary-angle rotations**, the gates whose angle is not a multiple of `pi / 4`.
+Clifford gates and `T` are what an error-corrected machine applies natively; every other angle has
+to be synthesised from them, so those rotations dominate the fault-tolerant cost that Hoefler, Häner
+and Troyer and Beverland *et al.* ([below](#shor-beyond-15-and-without-a-quantum-computer)) argue
+over. Gates are counted as written, not after any optimisation.
+
+| circuit | qubits | gates | depth | rotations |
+|---|---|---|---|---|
+| `CompiledShor`, any `N` | 2 | 3 | 3 | 0 |
+| `Shor` for 15, compiled | 8 | 122 | 108 | 1 |
+| Beauregard multiplication, 15 (4 bits) | 11 | 842 | 549 | 182 |
+| Beauregard multiplication, 21 (5 bits) | 13 | 1 353 | 743 | 369 |
+| Beauregard multiplication, 143 (8 bits) | 19 | 3 968 | 1 649 | 1 755 |
+| Beauregard multiplication, 899 (10 bits) | 23 | 6 908 | 2 473 | 3 581 |
+| `SemiclassicalShor` run, 21 | 13 | 13 560 | 7 466 | 3 727 |
+| `SemiclassicalShor` run, 899 | 23 | 141 424 | 53 879 | 74 802 |
+
+A run is `2n` multiplications, each between two Hadamards and a phase correction; the correction's
+angle depends on bits measured at run time, so it is charged as one rotation per bit. Between 5 and
+10 bits a multiplication grows as about `n^2.4` in gates and a run as about `n^3.4`, the `O(n^2)` and
+`O(n^3)` Beauregard's construction predicts. The rotations grow faster, about `n^3.3` per
+multiplication, because the transforms here are exact and keep every small angle; an approximate
+transform that drops the smallest would not. `IterativeShor` has no row: its multiplication is a
+permutation of the state, not a decomposition into gates, so there is nothing to count.
+`ResourcesSpec` pins every figure in this table.
 
 ### Shor beyond 15, and without a quantum computer
 
