@@ -42,6 +42,24 @@ Here we just setup a quantum circuit with a custom register of qubits, ran it in
 
 This example is kept honest by `src/test/scala/scotty/ReadmeExampleSpec.scala`.
 
+### What this fork adds
+
+This is a fork of [entangled-xyz/scotty](https://github.com/entangled-xyz/scotty), ported to Scala 3.9
+and extended for the [projects built on it](#downstream-projects). On top of the original
+state-vector simulator it adds:
+
+- [**Density matrices and quantum channels**](#density-matrices-and-quantum-channels): mixed states,
+  Kraus channels, measurement with post-selection, and the linear algebra underneath them;
+- [**Algorithms**](#algorithms): the quantum Fourier transform, Grover's search, and Shor's
+  algorithm four ways, from the circuit compiled for 15 to the general one on `2n + 3` qubits
+  ([`SemiclassicalShor`](#shor-for-any-odd-modulus)), the same on `L + 1` qubits
+  ([`IterativeShor`](#shor-on-l--1-qubits)), and the two-qubit circuit that only
+  [pretends to factor](#pretending-to-factor);
+- [**Resource counts**](#what-the-circuits-cost): qubits, gates, depth and arbitrary-angle
+  rotations for any circuit, with what Scotty's own circuits cost;
+- [**Gate fusion**](#gate-fusion): merging runs of gates into wider blocks before simulating them;
+- [**Releases**](#releases) as `io.github.oluies::scotty` on GitHub Packages.
+
 ## Building
 
 Scotty targets **Scala 3.9 LTS**. It is built and tested on the latest JDK (27 at the time of
@@ -604,11 +622,18 @@ Two projects are built on this fork, and both are the reason parts of it exist.
   is the better target, so its engine is a hardware `Channel.apply` verified against this
   implementation.
 
-Scotty is the golden model for both. Neither depends on the other.
+Scotty is the golden model for both. Neither depends on the other. Both depend on a tagged release
+of this fork, which their continuous integration builds from the tag, rather than on a moving branch.
 
 ## Getting Started
 
-To learn more about installing and using Scotty please [check out the official docs](https://www.entangled.xyz/scotty/).
+Add the dependency as [Releases](#releases) describes, or build a tag from source with
+`sbt publishLocal`. The examples in this README are the quickest tour of the fork, and
+`ReadmeExampleSpec` runs every one of them.
+
+The original project's [documentation](https://www.entangled.xyz/scotty/) covers the state-vector
+API this fork started from; it predates the Scala 3 port and everything listed under
+[What this fork adds](#what-this-fork-adds).
 
 ## Contributing
 
