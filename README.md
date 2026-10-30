@@ -276,8 +276,8 @@ Shor.factor(a = 7, y = 4, q = 16)                           // Some((3, 5))
 ```
 
 Shor is restricted to 15 on purpose. A general modular exponentiation for an `m`-bit modulus needs
-on the order of `m^3` gates and `2m + 3` qubits on top of the counting register, which a state-vector
-simulator on one machine outgrows within a few bits; a supercomputer gets much further, to a 39-bit
+on the order of `m^3` gates and `2m + 3` qubits in all, with a single counting qubit measured and
+reused, which a state-vector simulator on one machine outgrows within a few bits; a supercomputer gets much further, to a 39-bit
 number in [Willsch et al.](#shor-beyond-15-and-without-a-quantum-computer). Compiling the arithmetic
 for one modulus, as here, keeps the circuit small, at the cost that
 [Smolin, Smith and Vargo](#shor-beyond-15-and-without-a-quantum-computer) point out: what such a
