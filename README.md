@@ -69,8 +69,12 @@ tag runs `.github/workflows/release.yml`, which tests, publishes and creates the
 libraryDependencies += "io.github.oluies" %% "scotty" % "0.7.0"
 resolvers += "GitHub Packages" at "https://maven.pkg.github.com/oluies/scotty"
 // GitHub Packages needs a token to read, even for a public package: a personal access token with
-// read:packages, here taken from the environment.
-credentials += Credentials("GitHub Package Registry", "maven.pkg.github.com", "_", sys.env("GITHUB_TOKEN"))
+// read:packages, here taken from the environment. Added only when it is set, so a build without it
+// still loads and fails only at resolving Scotty.
+credentials ++= sys.env
+  .get("GITHUB_TOKEN")
+  .map(token => Credentials("GitHub Package Registry", "maven.pkg.github.com", "_", token))
+  .toSeq
 ```
 
 Or, without a token, build the tag from source: `git checkout v0.7.0 && sbt publishLocal`.

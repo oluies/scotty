@@ -31,11 +31,27 @@ jobs:
           fi
       - name: Test
         run: sbt -batch test
+      # Both steps are safe to re-run. GitHub Packages refuses a release version it already has with
+      # HTTP 409, which after a failure further down means the publish already happened, so a 409 is
+      # taken as done; the jars are built either way. The release step uploads to an existing
+      # release instead of failing on it.
       - name: Publish to GitHub Packages
-        run: sbt -batch publish
+        run: |
+          if ! sbt -batch publish 2>&1 | tee publish.log; then
+            if grep -q '409' publish.log; then
+              echo "$GITHUB_REF_NAME is already on GitHub Packages; continuing to the release"
+            else
+              exit 1
+            fi
+          fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Create the GitHub release
-        run: gh release create "$GITHUB_REF_NAME" --verify-tag --generate-notes target/scala-*/scotty_3-*.jar
+        run: |
+          if gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" --clobber target/scala-*/scotty_3-*.jar
+          else
+            gh release create "$GITHUB_REF_NAME" --verify-tag --generate-notes target/scala-*/scotty_3-*.jar
+          fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
