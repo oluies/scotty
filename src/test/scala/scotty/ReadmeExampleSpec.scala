@@ -70,6 +70,10 @@ class ReadmeExampleSpec extends AnyFlatSpec:
 
     assert(a == 12)
     assert(CompiledShor.factors(n = 143, a = a, measured = 1) == Some((BigInt(11), BigInt(13))))
+    assert(
+      scotty.quantum.Resources.of(CompiledShor.circuit).summary ==
+        "2 qubits, 3 gates (1 on two or more qubits), depth 3, 0 arbitrary-angle rotations"
+    )
   }
 
   "the README fusion example" should "report the form mix the README quotes" in {
