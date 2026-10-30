@@ -6,12 +6,14 @@ import scotty.quantum.gate.StandardGate.{CNOT, CSWAP, H, X}
 
 /** Shor's period finding for N = 15, with a hand-compiled modular exponentiation.
   *
-  * The restriction to 15 is not laziness, it is the state of the art for simulation. A general
-  * modular exponentiation circuit for an `m`-bit modulus needs on the order of `m^3` gates and
-  * `2m + 3` qubits, which puts even N = 21 out of reach of anything that has to hold `2^n`
-  * amplitudes. Every "Shor's algorithm" that actually runs — on simulators and on hardware alike —
-  * compiles the arithmetic for one specific modulus and one specific base, and this is that circuit
-  * for 15.
+  * The restriction to 15 is a choice. A general modular exponentiation circuit for an `m`-bit
+  * modulus needs on the order of `m^3` gates and `2m + 3` qubits on top of the counting register,
+  * which a state-vector simulator on one machine outgrows within a few bits; on a GPU supercomputer
+  * Willsch et al. ran the general algorithm to factor 549 755 813 701 (Mathematics 11, 4222 (2023),
+  * arXiv:2308.05047). This circuit instead compiles the arithmetic for one modulus and one base,
+  * which keeps it to eight qubits, with the caveat Smolin, Smith and Vargo make (Nature 499, 163
+  * (2013), arXiv:1301.7007): a compiled circuit demonstrates the period it finds, not the size of the
+  * number.
   *
   * The compilation is the standard one. Modulo 15, multiplication by 2 is a cyclic rotation of the
   * four work bits, because `2^4 = 16 = 1 (mod 15)`; and bitwise negation is multiplication by -1,

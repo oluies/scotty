@@ -276,11 +276,64 @@ Shor.factor(a = 7, y = 4, q = 16)                           // Some((3, 5))
 ```
 
 Shor is restricted to 15 on purpose. A general modular exponentiation for an `m`-bit modulus needs
-on the order of `m^3` gates and `2m + 3` qubits, which puts even 21 out of reach of anything holding
-`2^n` amplitudes; every Shor implementation that actually runs compiles the arithmetic for one
-modulus. Modulo 15 that compilation is pleasant: multiplication by 2 is a cyclic rotation of the four
+on the order of `m^3` gates and `2m + 3` qubits on top of the counting register, which a state-vector
+simulator on one machine outgrows within a few bits; a supercomputer gets much further, to a 39-bit
+number in [Willsch et al.](#shor-beyond-15-and-without-a-quantum-computer). Compiling the arithmetic
+for one modulus, as here, keeps the circuit small, at the cost that
+[Smolin, Smith and Vargo](#shor-beyond-15-and-without-a-quantum-computer) point out: what such a
+circuit demonstrates is the period it finds, not the size of the number. Modulo 15 that compilation is pleasant: multiplication by 2 is a cyclic rotation of the four
 work bits because `2^4 = 1 (mod 15)`, and bitwise negation is multiplication by `-1`, so every base
 is a rotation optionally followed by a negation — `CSWAP`s and `CNOT`s, nothing more.
+
+### Shor beyond 15, and without a quantum computer
+
+What Shor's algorithm is for, how far it has been simulated classically, and the attempts to factor
+without it. Every title, author list, venue and quotation is checked against the paper's abstract
+page, and details a page did not confirm are left out; the remarks connecting them are this README's.
+
+**Where quantum computers are expected to pay off**
+
+- T. Hoefler, T. Häner and M. Troyer, *Disentangling Hype from Practicality: On Realistically
+  Achieving Quantum Advantage*, Communications of the ACM, May 2023,
+  [arXiv:2307.00523](https://arxiv.org/abs/2307.00523). Practical advantage needs "small data
+  problems and quantum algorithms with super-quadratic speedups"; the abstract sees "a huge potential
+  in material science and chemistry".
+- M. E. Beverland *et al.*, *Assessing requirements to scale to practical quantum advantage* (2022),
+  [arXiv:2211.07629](https://arxiv.org/abs/2211.07629). Three scaled applications need "hundreds of
+  thousands to millions of physical qubits".
+
+**Shor's algorithm, simulated and improved**
+
+- D. Willsch, M. Willsch, F. Jin, H. De Raedt and K. Michielsen, *Large-Scale Simulation of Shor's
+  Quantum Factoring Algorithm*, Mathematics **11**, 4222 (2023),
+  [arXiv:2308.05047](https://arxiv.org/abs/2308.05047). The largest semiprime factored by running Shor's
+  algorithm on a GPU-based supercomputer, "without exploiting prior knowledge of the solution", is
+  549 755 813 701 = 712 321 × 771 781.
+- O. Regev, *An Efficient Quantum Factoring Algorithm* (2023),
+  [arXiv:2308.06572](https://arxiv.org/abs/2308.06572). `n`-bit integers from `√n + 4` independent runs
+  of a circuit with `Õ(n^{3/2})` gates and classical post-processing; it rests on a number-theoretic heuristic, and the abstract says it is "not clear" yet whether it helps
+  physical implementations.
+- J. A. Smolin, G. Smith and A. Vargo, *Pretending to factor large numbers on a quantum computer*,
+  Nature **499**, 163–165 (2013), [arXiv:1301.7007](https://arxiv.org/abs/1301.7007). A compiled
+  version of Shor's algorithm factors products of large primes with two coherent qubits, which shows
+  that "the correct measure of difficulty ... is not the size of number factored, but the length of
+  the period found". It applies to every compiled circuit, this one for 15 included.
+
+**Factoring without Shor**
+
+- C. P. Schnorr, *Fast Factoring Integers by SVP Algorithms*, IACR ePrint
+  [2021/232](https://eprint.iacr.org/2021/232). A lattice method whose abstract ended "This destroys
+  the RSA cryptosystem"; the preprint was withdrawn on 5 June 2021.
+- B. Yan *et al.*, *Factoring integers with sublinear resources on a superconducting quantum
+  processor* (2022), [arXiv:2212.12372](https://arxiv.org/abs/2212.12372). Lattice reduction combined
+  with QAOA; it factored integers up to 48 bits on 10 qubits and *estimates* that 372 physical qubits
+  would challenge RSA-2048. That is an estimate for an algorithm with no demonstrated scaling, not a
+  result.
+- E. Tang, *A quantum-inspired classical algorithm for recommendation systems* (2018),
+  [arXiv:1807.04271](https://arxiv.org/abs/1807.04271). The first dequantisation: a classical algorithm
+  that removes the exponential speedup claimed for quantum recommendation systems. Dequantisation
+  applies to low-rank linear algebra; no such classical replacement is known for Shor's period
+  finding.
 
 ### Tests
 
