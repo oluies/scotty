@@ -273,17 +273,43 @@ sim.runAndMeasure(circuit).toBinary                         // "10101" with prob
 val periods = Shor.periodCircuit(a = 7, countingQubits = 4)
 Shor.period(a = 7, y = 4, q = 16)                           // Some(4)
 Shor.factor(a = 7, y = 4, q = 16)                           // Some((3, 5))
+
+// Shor's algorithm for any odd modulus: Beauregard's 2n + 3 qubits, one counting qubit reused.
+SemiclassicalShor.quantumFactor(a = 2, n = 21, new Random(21))  // Some((3, 7)), from some runs
 ```
 
-Shor is restricted to 15 on purpose. A general modular exponentiation for an `m`-bit modulus needs
+`Shor` is restricted to 15 on purpose; `SemiclassicalShor` is not. A general modular exponentiation for an `m`-bit modulus needs
 on the order of `m^3` gates and `2m + 3` qubits in all, with a single counting qubit measured and
 reused, which a state-vector simulator on one machine outgrows within a few bits; a supercomputer gets much further, to a 39-bit
 number in [Willsch et al.](#shor-beyond-15-and-without-a-quantum-computer). Compiling the arithmetic
-for one modulus, as here, keeps the circuit small, at the cost that
+for one modulus, as `Shor` does, keeps the circuit small, at the cost that
 [Smolin, Smith and Vargo](#shor-beyond-15-and-without-a-quantum-computer) point out: what such a
 circuit demonstrates is the period it finds, not the size of the number. Modulo 15 that compilation is pleasant: multiplication by 2 is a cyclic rotation of the four
 work bits because `2^4 = 1 (mod 15)`, and bitwise negation is multiplication by `-1`, so every base
 is a rotation optionally followed by a negation — `CSWAP`s and `CNOT`s, nothing more.
+
+### Shor for any odd modulus
+
+`SemiclassicalShor` runs the general algorithm, with no knowledge of the modulus compiled in, on
+`2n + 3` qubits for an `n`-bit modulus: 13 for 21, 15 for 35.
+
+- **Arithmetic**, in `Beauregard`, after S. Beauregard, *Circuit for Shor's algorithm using 2n+3
+  qubits*, Quantum Information and Computation **3**, 175–185 (2003),
+  [arXiv:quant-ph/0205095](https://arxiv.org/abs/quant-ph/0205095). Constants are added in Fourier
+  space, as in T. G. Draper, *Addition on a Quantum Computer* (2000),
+  [arXiv:quant-ph/0008033](https://arxiv.org/abs/quant-ph/0008033): one phase rotation per qubit and
+  no register for the constant. On that sit a doubly controlled modular adder, a controlled modular
+  multiply-add and the controlled multiplication `|x> -> |a x mod N>`.
+- **One counting qubit**, measured and reused for every exponent bit, with the inverse transform's
+  rotations chosen by the bits already measured: R. B. Griffiths and C.-S. Niu, *Semiclassical
+  Fourier Transform for Quantum Computation*, Phys. Rev. Lett. **76**, 3228–3231 (1996),
+  [arXiv:quant-ph/9511007](https://arxiv.org/abs/quant-ph/9511007). The simulator has no mid-circuit
+  measurement, so the driver measures and resets that qubit on the state vector itself. It takes
+  the textbook circuit's `4n + 2` qubits down to `2n + 3`, which for 21 is `2^13` amplitudes rather
+  than `2^22`.
+- **Gate fusion** keeps it quick: a controlled multiplication at 21 is about 1350 gates, which the
+  fusion pass at its default width of five turns into about 255 operations, from about 140 ms to
+  about 25 ms, and `PeriodFinder` keeps each fused multiplier for the next shot.
 
 ### Shor beyond 15, and without a quantum computer
 
@@ -337,7 +363,7 @@ page, and details a page did not confirm are left out; the remarks connecting th
 
 ### Tests
 
-Eighteen cases across three specs. They are written to check the **answer**, not agreement with
+Thirty cases across five specs. They are written to check the **answer**, not agreement with
 another implementation, which is the property that makes them useful as verification vectors: a
 diff against a second simulator only tells you two things agree, whereas a search that stops
 finding its target tells you something is wrong.
@@ -350,6 +376,8 @@ sbt 'testOnly scotty.algorithm.*'
 |---|---|
 | `QftSpec` | The transform matches an **explicitly constructed DFT matrix** on every basis state for 1 to 4 qubits — amplitude by amplitude, real and imaginary parts, to `1e-9`. This is what fixes the qubit-ordering convention; checking a QFT against another circuit would not. Also: the inverse undoes it, and `|0>` maps to a uniform superposition. |
 | `GroverSpec` | Amplitude concentrates on the marked state for 2 to 6 qubits (`> 0.94`, the analytic floor over that range), exactly on two qubits, and better than `0.99` by five. Two marked states are found at once. Every *unmarked* state is left below `0.001` — the check that catches an oracle that amplifies indiscriminately. The iteration count is `floor(pi/4 * sqrt(N/M))`, and the oracle flips the marked amplitude's sign and nothing else. |
+| `BeauregardSpec` | Each block of the arithmetic on **classical inputs**, against ordinary modular arithmetic — the check Alice & Bob describe for their own compiled circuits (IACR ePrint 2026/2665, Appendix B). The Fourier-space adder for every `a` and `b` below 16; the doubly controlled modular adder for every `a, b < 13` and all four control settings, with the ancilla required back at `|0>`; the controlled multiplication for every `x < N` at 15 and 21, control on and off, with `b` and the ancilla left clear. Every output has to be a single basis state to `1e-9`. |
+| `SemiclassicalShorSpec` | Modulo 15 every period is a power of two, so **every shot** has to land exactly on a multiple of `q / r`, for all seven bases. Modulo 21 (period 6) 40 seeded shots have to land within one step of a peak at least 75% of the time, against the exact distribution's 90.3%. With fixed coprime bases, so no gcd shortcut can do the work, the period factors 15, 21 and 35. |
 | `ShorSpec` | The compiled multiplier has the period classical arithmetic says it does, **for all six bases** it covers — not just the textbook `a = 7`. The period-finding circuit puts over 99% of its weight on multiples of `2^c / r`, with each peak within `0.01` of `1/r`, and the distribution normalises. Continued fractions recover the period; a zero measurement correctly yields nothing. The classical tail factors 15 into `(3, 5)`, and an end-to-end run takes every outcome the circuit actually produces with real weight and requires that the factorisations they yield are exactly `(3, 5)`. |
 
 Both algorithms are also re-run through the fusion pass in `GateFusionSpec`, at every fusion width
