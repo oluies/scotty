@@ -76,10 +76,11 @@ object Resources:
     case t: TargetGate      => t.params
     case c: ControlGate     => angles(c.target) ++ fieldAngles(c)
     case CompositeGate(gs*) => gs.flatMap(angles)
-    case _                  => Seq()
+    case other              => fieldAngles(other)
 
-  // Controlled gates such as CPHASE keep their angle in a field of their own rather than in a
-  // target's params, so read it from the case class.
+  // Gates such as CPHASE and PSWAP keep their angle in a field of their own rather than in a
+  // target's params, so read it from the case class. PSWAP is a swap gate, neither a target nor a
+  // control gate, which is why every other kind of gate is read this way too.
   private def fieldAngles(gate: Gate): Seq[Double] = gate match
     case p: Product => p.productIterator.collect { case d: Double => d }.toSeq
     case _          => Seq()

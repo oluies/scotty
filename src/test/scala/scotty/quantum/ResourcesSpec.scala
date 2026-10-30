@@ -3,7 +3,7 @@ package scotty.quantum
 import org.scalatest.flatspec.AnyFlatSpec
 import scotty.algorithm.{Beauregard, CompiledShor, Shor}
 import scotty.quantum.gate.{Controlled, Gate}
-import scotty.quantum.gate.StandardGate.{CNOT, CPHASE, H, PHASE, X}
+import scotty.quantum.gate.StandardGate.{CNOT, CPHASE, H, ISWAP, PHASE, PSWAP, X}
 
 /** Checks [[Resources]] on small hand-counted cases, then pins what it says about Scotty's own
   * Shor circuits, which is what the README's resource table quotes.
@@ -28,6 +28,11 @@ class ResourcesSpec extends AnyFlatSpec {
     assert(Resources.isArbitraryRotation(CPHASE(0.3, 0, 1)))
     assert(Resources.isArbitraryRotation(Controlled(2, PHASE(0.3, 0))))
     assert(!Resources.isArbitraryRotation(H(0)))
+    // A swap gate carries its angle in a field of its own, outside both target and control gates.
+    assert(Resources.isArbitraryRotation(PSWAP(0.3, 0, 1)))
+    assert(!Resources.isArbitraryRotation(PSWAP(Math.PI / 2, 0, 1)))
+    assert(!Resources.isArbitraryRotation(ISWAP(0, 1)))
+    assert(Resources.of(Seq(PSWAP(0.3, 0, 1))).rotations == 1)
   }
 
   it should "take the qubit count from a circuit's register" in {
