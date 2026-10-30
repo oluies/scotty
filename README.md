@@ -66,7 +66,7 @@ Releases are published to GitHub Packages as `io.github.oluies::scotty`, not to 
 tag runs `.github/workflows/release.yml`, which tests, publishes and creates the GitHub release.
 
 ```scala
-libraryDependencies += "io.github.oluies" %% "scotty" % "0.7.0"
+libraryDependencies += "io.github.oluies" %% "scotty" % "0.7.1"
 resolvers += "GitHub Packages" at "https://maven.pkg.github.com/oluies/scotty"
 // GitHub Packages needs a token to read, even for a public package: a personal access token with
 // read:packages, here taken from the environment. Added only when it is set, so a build without it
@@ -77,7 +77,7 @@ credentials ++= sys.env
   .toSeq
 ```
 
-Or, without a token, build the tag from source: `git checkout v0.7.0 && sbt publishLocal`.
+Or, without a token, build the tag from source: `git checkout v0.7.1 && sbt publishLocal`.
 
 ## Density matrices and quantum channels
 
