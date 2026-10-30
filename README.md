@@ -279,6 +279,10 @@ SemiclassicalShor.quantumFactor(a = 2, n = 21, new Random(21))  // Some((3, 7)),
 
 // The same on L + 1 qubits, the multiplication a permutation of basis states (Willsch et al.).
 IterativeShor.quantumFactor(a = 2, n = 21, new Random(21))      // Some((3, 7)), from some runs
+
+// Shor compiled with the answer: two qubits that "factor" anything (Smolin, Smith and Vargo).
+val a = CompiledShor.base(p = 11, q = 13)                       // 12, built from the factors
+CompiledShor.factors(n = 143, a = a, measured = 1)              // Some((11, 13)), on a coin flip
 ```
 
 `Shor` is restricted to 15 on purpose; `SemiclassicalShor` is not. A general modular exponentiation for an `m`-bit modulus needs
@@ -337,6 +341,20 @@ The trade is the one the paper makes: the oracle is the arithmetic's effect, not
 into gates, so `SemiclassicalShor` remains the circuit and `IterativeShor` the scale. It is plain
 array code with nothing from the simulator, so it also compiles for JavaScript.
 
+### Pretending to factor
+
+`CompiledShor` is Smolin, Smith and Vargo's warning label
+([below](#shor-beyond-15-and-without-a-quantum-computer)), not an algorithm. For any `N = p q` the
+Chinese remainder theorem gives four square roots of 1 modulo `N`, `±p p_q ± q q_p` with `p_q` and
+`q_p` the inverses of `p` mod `q` and `q` mod `p` (their Eq. (4)); two are `±1` and the other two
+have period 2. With period 2 the modular exponentiation is one `CNOT` and the Fourier transform one
+Hadamard, so the same two-qubit circuit (their Fig. 2) "factors" 15 and a 1024-bit semiprime alike.
+The catch is that the base is built from `p` and `q`: the compiler already knows the answer, and
+`gcd(a - 1, N)` gives it with no quantum step at all. The circuit leaves its counting qubit
+maximally mixed, so a coin toss reproduces it exactly, which is how the paper "factored" RSA-768.
+Hence their test for any factoring experiment, which applies to `Shor`'s compiled circuit for 15 in
+a milder form: judge it "not by the size of the number factored but by the size of the period found".
+
 ### Shor beyond 15, and without a quantum computer
 
 What Shor's algorithm is for, how far it has been simulated classically, and the attempts to factor
@@ -369,7 +387,8 @@ page, and details a page did not confirm are left out; the remarks connecting th
   Nature **499**, 163–165 (2013), [arXiv:1301.7007](https://arxiv.org/abs/1301.7007). A compiled
   version of Shor's algorithm factors products of large primes with two coherent qubits, which shows
   that "the correct measure of difficulty ... is not the size of number factored, but the length of
-  the period found". It applies to every compiled circuit, this one for 15 included.
+  the period found". It applies to every compiled circuit, this one for 15 included, and
+  `CompiledShor` reproduces its Fig. 2 and Eq. (4).
 
 **Factoring without Shor**
 
@@ -389,7 +408,7 @@ page, and details a page did not confirm are left out; the remarks connecting th
 
 ### Tests
 
-Thirty-eight cases across six specs. They are written to check the **answer**, not agreement with
+Forty-six cases across seven specs. They are written to check the **answer**, not agreement with
 another implementation, which is the property that makes them useful as verification vectors: a
 diff against a second simulator only tells you two things agree, whereas a search that stops
 finding its target tells you something is wrong.
@@ -403,6 +422,7 @@ sbt 'testOnly scotty.algorithm.*'
 | `QftSpec` | The transform matches an **explicitly constructed DFT matrix** on every basis state for 1 to 4 qubits — amplitude by amplitude, real and imaginary parts, to `1e-9`. This is what fixes the qubit-ordering convention; checking a QFT against another circuit would not. Also: the inverse undoes it, and `|0>` maps to a uniform superposition. |
 | `GroverSpec` | Amplitude concentrates on the marked state for 2 to 6 qubits (`> 0.94`, the analytic floor over that range), exactly on two qubits, and better than `0.99` by five. Two marked states are found at once. Every *unmarked* state is left below `0.001` — the check that catches an oracle that amplifies indiscriminately. The iteration count is `floor(pi/4 * sqrt(N/M))`, and the oracle flips the marked amplitude's sign and nothing else. |
 | `BeauregardSpec` | Each block of the arithmetic on **classical inputs**, against ordinary modular arithmetic — the check Alice & Bob describe for their own compiled circuits (IACR ePrint 2026/2665, Appendix B). The Fourier-space adder for every `a` and `b` below 16; the doubly controlled modular adder for every `a, b < 13` and all four control settings, with the ancilla required back at `|0>`; the controlled multiplication for every `x < N` at 15 and 21, control on and off, with `b` and the ancilla left clear. Every output has to be a single basis state to `1e-9`. |
+| `CompiledShorSpec` | The compiled base is one of Eq. (4)'s four square roots of 1 and has period 2, for 15, 21, 143 and a **1024-bit semiprime** of two generated primes; `gcd(a - 1, N)` already is a factor, with no quantum step. The two-qubit circuit reads 1 with probability exactly one half and leaves **both qubits maximally mixed**, the paper's Section 3 argument that a coin would do. Twenty shots on the simulator factor all four with the same circuit, and twenty coin tosses factor the 1024-bit one. |
 | `IterativeShorSpec` | The distribution of the measured `y`, found by following both outcomes of every measurement, equals the **analytic phase-estimation distribution** to `1e-12` at every `y` for 15, 21, 33, 35 and 39, computed from its defining sum with no state vector; modulo 21 that puts 90.3% of the weight within one step of a peak, the figure `SemiclassicalShorSpec` uses. Every shot of `SemiclassicalShor` at 21 and 35 lands where this distribution gives real weight, and both recover the classical period. Fixed coprime bases factor every case from 15 to 91 through the period; every odd semiprime below 100 factors; and 1 022 117 = 1009 × 1013 factors on 21 qubits with 40 counting bits. |
 | `SemiclassicalShorSpec` | Modulo 15 every period is a power of two, so **every shot** has to land exactly on a multiple of `q / r`, for all seven bases. Modulo 21 (period 6) 40 seeded shots have to land within one step of a peak at least 75% of the time, against the exact distribution's 90.3%. With fixed coprime bases, so no gcd shortcut can do the work, the period factors 15, 21 and 35. |
 | `ShorSpec` | The compiled multiplier has the period classical arithmetic says it does, **for all six bases** it covers — not just the textbook `a = 7`. The period-finding circuit puts over 99% of its weight on multiples of `2^c / r`, with each peak within `0.01` of `1/r`, and the distribution normalises. Continued fractions recover the period; a zero measurement correctly yields nothing. The classical tail factors 15 into `(3, 5)`, and an end-to-end run takes every outcome the circuit actually produces with real weight and requires that the factorisations they yield are exactly `(3, 5)`. |

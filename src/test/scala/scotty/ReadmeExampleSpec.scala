@@ -5,7 +5,7 @@ import scotty.quantum.gate.StandardGate.{CNOT, H, RZ, Z}
 import scotty.quantum.gate.Controlled
 import scotty.quantum.math.{Complex, MathUtils}
 import scotty.quantum.math.MathUtils.~=
-import scotty.algorithm.{Grover, IterativeShor, Qft, SemiclassicalShor, Shor}
+import scotty.algorithm.{CompiledShor, Grover, IterativeShor, Qft, SemiclassicalShor, Shor}
 import scotty.quantum.{Circuit, Qubit, QubitProbabilityReader, QubitRegister, Superposition}
 import scotty.simulator.QuantumSimulator
 import scotty.simulator.fusion.{BlockForm, FusedRunner, GateFusion}
@@ -65,6 +65,11 @@ class ReadmeExampleSpec extends AnyFlatSpec:
 
     assert(Iterator.continually(SemiclassicalShor.quantumFactor(a = 2, n = 21, random)).take(8).contains(Some((3L, 7L))))
     assert(Iterator.continually(IterativeShor.quantumFactor(a = 2, n = 21, random)).take(8).contains(Some((3L, 7L))))
+
+    val a = CompiledShor.base(p = 11, q = 13)
+
+    assert(a == 12)
+    assert(CompiledShor.factors(n = 143, a = a, measured = 1) == Some((BigInt(11), BigInt(13))))
   }
 
   "the README fusion example" should "report the form mix the README quotes" in {
