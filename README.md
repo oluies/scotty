@@ -1,6 +1,6 @@
 # Scotty: Quantum Computing in Scala
 
-[![CI](https://github.com/oluies/scotty/actions/workflows/ci.yml/badge.svg?branch=pctc)](https://github.com/oluies/scotty/actions/workflows/ci.yml) [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+[![CI](https://github.com/oluies/scotty/actions/workflows/ci.yml/badge.svg?branch=pctc)](https://github.com/oluies/scotty/actions/workflows/ci.yml) [![Docs](https://img.shields.io/badge/docs-oluies.github.io%2Fscotty-1f6f8b)](https://oluies.github.io/scotty/) [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
 *"Whatever you say, sir. Thy will be done."*—Montgomery Scott
 
@@ -627,14 +627,15 @@ of this fork, which their continuous integration builds from the tag, rather tha
 
 ## Getting Started
 
-Add the dependency as [Releases](#releases) describes, or build a tag from source with
-`sbt publishLocal`. The examples in this README are the quickest tour of the fork.
-`ReadmeExampleSpec` runs the teleportation, algorithm and fusion ones; the density-matrix snippets
-are illustrations, with inputs such as `rho` left to the reader.
+The documentation site, [oluies.github.io/scotty](https://oluies.github.io/scotty/), has this README
+as browsable pages together with the Scaladoc API reference. To use Scotty, add the dependency as
+[Releases](#releases) describes, or build a tag from source with `sbt publishLocal`.
+`ReadmeExampleSpec` runs the teleportation, algorithm and fusion examples here; the density-matrix
+snippets are illustrations, with inputs such as `rho` left to the reader.
 
-The original project's [documentation](https://www.entangled.xyz/scotty/) covers the state-vector
-API this fork started from; it predates the Scala 3 port and everything listed under
-[What this fork adds](#what-this-fork-adds).
+The original project's documentation site, www.entangled.xyz/scotty, is no longer online; its source
+is at [entangled-xyz/scotty](https://github.com/entangled-xyz/scotty), which covers the state-vector
+API this fork started from, before the Scala 3 port.
 
 ## Contributing
 
