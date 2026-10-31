@@ -36,6 +36,12 @@ const pages = [
   {file: 'downstream.md', title: 'Downstream projects', sections: ['## Downstream projects', '## Contributing', '## License']},
 ];
 
+// README sections deliberately left off the site. Every other `##` section has to be on a page, or
+// the build fails: a section added to the README and forgotten here would otherwise vanish from the
+// site with the build still passing. Getting Started exists to send README readers to the site, and
+// the site's own Getting started page (Building and Releases) already says how to install.
+const skip = ['## Getting Started'];
+
 // Where each README anchor lives on the site: a page, and an anchor on it or none.
 const anchors = {
   'what-this-fork-adds': ['index.md', 'what-this-fork-adds'],
@@ -74,7 +80,9 @@ function sectionLines(heading, exclude = [], stopAt) {
     const exEnd = (sections.slice(j + 1).find((s) => s.level <= sections[j].level) ?? {start: lines.length}).start;
     for (let k = sections[j].start; k < exEnd; k++) skipped.add(k);
   }
-  return {level, lines: lines.slice(start, end).filter((_, k) => !skipped.has(start + k))};
+  const covered = [];
+  for (let k = start; k < end; k++) if (!skipped.has(k)) covered.push(k);
+  return {level, lines: lines.slice(start, end).filter((_, k) => !skipped.has(start + k)), covered};
 }
 
 function relative(from, to) {
@@ -82,10 +90,14 @@ function relative(from, to) {
   return rel.startsWith('.') ? rel : `./${rel}`;
 }
 
+// Every README line a page takes, to check that no `##` section is left out.
+const takenLines = new Set();
+
 for (const page of pages) {
   const body = [];
   page.sections.forEach((heading, n) => {
-    const {lines: taken} = sectionLines(heading, page.exclude, page.stopAt);
+    const {lines: taken, covered} = sectionLines(heading, page.exclude, page.stopAt);
+    covered.forEach((k) => takenLines.add(k));
     // The page's own title replaces the first section's heading unless keepHeadings is set; the
     // headings that remain are shifted so that the shallowest of them becomes `##`.
     const kept = n === 0 && !page.keepHeadings ? taken.slice(1) : taken;
@@ -124,6 +136,14 @@ for (const page of pages) {
   const target = path.join(out, page.file);
   fs.mkdirSync(path.dirname(target), {recursive: true});
   fs.writeFileSync(target, front.join('\n') + '\n' + text);
+}
+
+const missing = sections.filter((s) => s.level === 2 && !takenLines.has(s.start) && !skip.includes(s.heading));
+if (missing.length) {
+  throw new Error(`README sections on no page and not in skip: ${missing.map((s) => s.heading).join(', ')}`);
+}
+for (const heading of skip) {
+  if (!sections.some((s) => s.heading === heading)) throw new Error(`skip names "${heading}", which the README no longer has`);
 }
 
 console.log(`readme-to-docs: wrote ${pages.length} pages to ${path.relative(process.cwd(), out) || 'docs'}`);

@@ -5,7 +5,9 @@ name: Docs
 # The pages are generated from README.md (website/scripts/readme-to-docs.mjs), so a change to the
 # README is a change to the site; the API reference is this build's Scaladoc, copied into the site
 # under /api/. docs-build.yml runs the same build on pull requests without deploying, so this
-# workflow only ever runs for what has landed on pctc.
+# workflow only ever runs for what has landed on pctc. There is no release trigger: release.yml
+# creates releases with GITHUB_TOKEN, which starts no other workflow, and the version bump that
+# follows a release is a push to pctc, which redeploys anyway.
 
 on:
   push:
@@ -16,8 +18,6 @@ on:
       - "build.sbt"
       - "website/**"
       - ".github/workflows/pages.yml"
-  release:
-    types: [published]
   workflow_dispatch:
 
 permissions:

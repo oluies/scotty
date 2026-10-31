@@ -11,9 +11,11 @@ import type * as Preset from '@docusaurus/preset-classic';
 // source and its examples, which ReadmeExampleSpec runs, are the ones shown here. The Scaladoc API
 // reference is built by sbt in the same workflow and copied into static/api/ before this build.
 
-// The version the build describes, read from build.sbt so the navbar cannot disagree with it.
-const buildSbt = fs.readFileSync(path.join(__dirname, '..', 'build.sbt'), 'utf8');
-const version = /ThisBuild \/ version := "([^"]+)"/.exec(buildSbt)?.[1] ?? 'unknown';
+// The latest release, read from the README's dependency line, which names the version to depend
+// on. build.sbt is no use here: between releases it carries the next snapshot, which has no release
+// page to link to.
+const readme = fs.readFileSync(path.join(__dirname, '..', 'README.md'), 'utf8');
+const released = /"io\.github\.oluies" %% "scotty" % "([^"]+)"/.exec(readme)?.[1];
 
 const config: Config = {
   title: 'Scotty',
@@ -81,7 +83,7 @@ const config: Config = {
         // static/api/ is the Scaladoc the Pages workflow builds; a plain href so the link checker,
         // which runs before that copy exists locally, does not treat it as a route.
         {href: 'pathname:///scotty/api/index.html', label: 'API', position: 'left'},
-        {href: 'https://github.com/oluies/scotty/releases', label: `Releases (${version})`, position: 'right'},
+        {href: 'https://github.com/oluies/scotty/releases', label: released ? `Releases (${released})` : 'Releases', position: 'right'},
         {href: 'https://github.com/oluies/scotty', label: 'GitHub', position: 'right'},
       ],
     },
