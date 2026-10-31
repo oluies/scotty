@@ -1,0 +1,76 @@
+name: Docs
+
+# Builds the documentation site and publishes it to https://oluies.github.io/scotty/.
+#
+# The pages are generated from README.md (website/scripts/readme-to-docs.mjs), so a change to the
+# README is a change to the site; the API reference is this build's Scaladoc, copied into the site
+# under /api/. docs-build.yml runs the same build on pull requests without deploying, so this
+# workflow only ever runs for what has landed on pctc.
+
+on:
+  push:
+    branches: [pctc]
+    paths:
+      - "README.md"
+      - "src/main/**"
+      - "build.sbt"
+      - "website/**"
+      - ".github/workflows/pages.yml"
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: sbt
+      - uses: sbt/setup-sbt@v1
+
+      - name: Scaladoc
+        run: |
+          sbt -batch doc
+          rm -rf website/static/api
+          cp -R target/scala-*/api website/static/api
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: website/package-lock.json
+
+      - name: Generate the pages from README.md and build the site
+        working-directory: website
+        run: |
+          npm ci
+          npm run build
+
+      - uses: actions/configure-pages@v6
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: website/build
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-24.04
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5
